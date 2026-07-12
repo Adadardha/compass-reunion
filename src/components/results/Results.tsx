@@ -1,0 +1,456 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { QRCodeSVG } from 'qrcode.react';
+import { BookOpen, GraduationCap, TrendingUp, Banknote, BarChart3, CheckCircle2, Circle, Radar, Target, Printer } from 'lucide-react';
+import { PredictionResult, CareerRoadmap } from '../../types';
+import { TRANSLATIONS, useLanguage } from '../../i18n';
+import { generateCareerRoadmap } from '../../services/gemini';
+import { localizePrediction, localizeRoadmap, localizeCareerName } from '../../services/careerLocale';
+import { LoadingSpinner, ErrorMessage } from '../Decorations';
+
+/** Safe numeric percent — never returns NaN. */
+const pct = (n: unknown): number => {
+  const v = Number(n);
+  if (!isFinite(v) || isNaN(v)) return 0;
+  return Math.round(v * 100);
+};
+
+interface ResultsProps {
+  prediction: PredictionResult;
+  mlScores: Array<{ career: string; confidence: number }>;
+  onStartInterview: () => void;
+  onRetakeQuiz: () => void;
+}
+
+const Results: React.FC<ResultsProps> = ({ prediction: rawPrediction, mlScores: rawMlScores, onStartInterview, onRetakeQuiz }) => {
+  const { lang } = useLanguage();
+  const [rawRoadmap, setRawRoadmap] = useState<CareerRoadmap | null>(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [roadmapError, setRoadmapError] = useState(false);
+  const [missionsDone, setMissionsDone] = useState<boolean[]>([false, false, false]);
+
+  // Localize prediction / ml scores / roadmap at render time so an EN↔AL
+  // toggle re-renders data rows (not only headers) without re-fetching.
+  const prediction = useMemo(() => localizePrediction(rawPrediction, lang), [rawPrediction, lang]);
+  const mlScores = useMemo(
+    () => rawMlScores.map(s => ({ career: localizeCareerName(s.career, lang), confidence: Number(s.confidence) || 0 })),
+    [rawMlScores, lang],
+  );
+  const roadmap = useMemo(() => (rawRoadmap ? localizeRoadmap(rawRoadmap, lang) : null), [rawRoadmap, lang]);
+
+  const loadRoadmap = async () => {
+    setRoadmapLoading(true);
+    setRoadmapError(false);
+    try {
+      // Fetch using canonical (Albanian) career name so cache/fallbacks match.
+      const r = await generateCareerRoadmap(rawPrediction.primaryCareer);
+      setRawRoadmap(r);
+    } catch {
+      setRoadmapError(true);
+    } finally {
+      setRoadmapLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRoadmap();
+    // Roadmap depends on career only. Language localization happens in useMemo
+    // above, so we don't need to re-fetch on language toggle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawPrediction.primaryCareer]);
+
+  const matchPercent = pct(prediction.confidence);
+
+  const missions = [
+    TRANSLATIONS.results.mission1,
+    TRANSLATIONS.results.mission2,
+    TRANSLATIONS.results.mission3,
+  ];
+  const completed = missionsDone.filter(Boolean).length;
+  const progressPct = Math.round((completed / missions.length) * 100);
+
+  // Deterministic regional demand — seeded from career name for stability
+  const regions = useMemo(() => {
+    const cities = ['Tirana', 'Durrës', 'Vlora', 'Shkodër', 'Korça'];
+    const seed = prediction.primaryCareer
+      .split('')
+      .reduce((s, c) => (s * 31 + c.charCodeAt(0)) >>> 0, 7);
+    let x = seed;
+    const rand = () => {
+      x = (x * 1664525 + 1013904223) >>> 0;
+      return x / 0xffffffff;
+    };
+    // Tirana always highest; other cities vary
+    const base = [88 + Math.floor(rand() * 10)];
+    for (let i = 1; i < cities.length; i++) base.push(35 + Math.floor(rand() * 55));
+    return cities.map((city, i) => ({ city, pct: base[i] }));
+  }, [prediction.primaryCareer]);
+
+
+  return (
+    <motion.div
+      key="results"
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="w-full max-w-2xl md:max-w-4xl space-y-6 md:space-y-8"
+    >
+      <div className="brutalist-border bg-background p-6 md:p-8 lg:p-12">
+        <h2 className="text-2xl md:text-4xl font-heading font-bold mb-6 md:mb-8">
+          {TRANSLATIONS.results.title}
+        </h2>
+
+        {/* Primary Match Card */}
+        <div className="mb-8 md:mb-12 p-6 md:p-8 brutalist-border bg-foreground/5">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4 md:mb-6 gap-4">
+            <div>
+              <p className="text-xs md:text-sm uppercase tracking-wider text-muted-foreground mb-2">
+                {TRANSLATIONS.results.match}
+              </p>
+              <h3 className="text-3xl md:text-5xl font-heading font-black">
+                {prediction.primaryCareer}
+              </h3>
+            </div>
+            <div className="text-left md:text-right">
+              <p className="text-xs md:text-sm uppercase tracking-wider text-muted-foreground mb-2">
+                {TRANSLATIONS.results.confidence}
+              </p>
+              <p className="text-4xl md:text-6xl font-mono font-bold text-accent">
+                {matchPercent}%
+              </p>
+            </div>
+          </div>
+          <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+            {prediction.description}
+          </p>
+        </div>
+
+        {/* Alternatives */}
+        {prediction.alternatives && prediction.alternatives.length > 0 && (
+          <div className="mb-8 md:mb-12">
+            <h4 className="text-lg md:text-xl font-bold mb-4 md:mb-6 uppercase tracking-wider">
+              {TRANSLATIONS.results.alternatives}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {prediction.alternatives.map((alt, i) => (
+                <div key={i} className="p-4 md:p-6 brutalist-border bg-foreground/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h5 className="font-bold text-base md:text-lg">{alt.career}</h5>
+                    <span className="text-sm font-mono text-muted-foreground">
+                      {pct(alt.confidence)}%
+                    </span>
+                  </div>
+                  <p className="text-xs md:text-sm text-muted-foreground">{alt.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ML Scores */}
+        {mlScores.length > 0 && (
+          <div className="mb-8 md:mb-12">
+            <div className="flex items-center gap-3 mb-4 md:mb-6">
+              <h4 className="text-lg md:text-xl font-bold uppercase tracking-wider">
+                {TRANSLATIONS.results.mlAnalysis}
+              </h4>
+              <span className="text-[10px] font-mono px-2 py-1 border border-border uppercase tracking-widest text-muted-foreground">
+                {TRANSLATIONS.results.mlBadge}
+              </span>
+            </div>
+            <div className="space-y-2 md:space-y-3">
+              {mlScores.slice(0, 6).map((s, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="w-36 md:w-48 text-xs md:text-sm font-mono truncate text-muted-foreground">
+                    {s.career}
+                  </span>
+                  <div className="flex-1 h-2 bg-muted overflow-hidden">
+                    <motion.div
+                      className={`h-full ${i === 0 ? 'bg-foreground' : 'bg-foreground/40'}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct(s.confidence)}%` }}
+                      transition={{ duration: 0.6, delay: i * 0.07, ease: 'easeOut' }}
+                    />
+                  </div>
+                  <span className="w-10 text-right text-xs font-mono text-muted-foreground">
+                    {pct(s.confidence)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Career Roadmap */}
+        <div className="mb-8 md:mb-12">
+          <h4 className="text-lg md:text-xl font-bold mb-4 md:mb-6 uppercase tracking-wider">
+            {TRANSLATIONS.results.roadmap}
+          </h4>
+          {roadmapLoading && <LoadingSpinner text={lang === 'en' ? 'Generating your career roadmap...' : 'Duke gjeneruar hartën e karrierës...'} />}
+          {roadmapError && <ErrorMessage message={TRANSLATIONS.common.error} onRetry={loadRoadmap} />}
+          {roadmap && (
+            <div className="space-y-4 md:space-y-6">
+              <RoadmapSection icon={<BookOpen className="w-4 h-4" />} title={TRANSLATIONS.results.roadmapSubjects} items={roadmap.subjects} />
+              <RoadmapSection icon={<GraduationCap className="w-4 h-4" />} title={TRANSLATIONS.results.roadmapUniversities} items={roadmap.universities} />
+              <RoadmapSection icon={<TrendingUp className="w-4 h-4" />} title={TRANSLATIONS.results.roadmapCareerPath} items={roadmap.careerPath} numbered />
+
+              {/* Three democratized local tracks — access beyond Tirana */}
+              {(roadmap.educationTrack || roadmap.localMarketTrack || roadmap.practicalSkillsTrack) && (
+                <div className="mt-6 pt-6 border-t border-border">
+                  <p className="text-xs md:text-sm uppercase tracking-widest text-accent mb-4 font-bold">
+                    {TRANSLATIONS.results.tracksTitle}
+                  </p>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {roadmap.educationTrack && (
+                      <TrackCard
+                        icon={<GraduationCap className="w-4 h-4" />}
+                        title={TRANSLATIONS.results.trackEducation}
+                        subtitle={TRANSLATIONS.results.trackEducationSub}
+                        items={roadmap.educationTrack}
+                      />
+                    )}
+                    {roadmap.localMarketTrack && (
+                      <TrackCard
+                        icon={<TrendingUp className="w-4 h-4" />}
+                        title={TRANSLATIONS.results.trackMarket}
+                        subtitle={TRANSLATIONS.results.trackMarketSub}
+                        items={roadmap.localMarketTrack}
+                      />
+                    )}
+                    {roadmap.practicalSkillsTrack && (
+                      <TrackCard
+                        icon={<BookOpen className="w-4 h-4" />}
+                        title={TRANSLATIONS.results.trackSkills}
+                        subtitle={TRANSLATIONS.results.trackSkillsSub}
+                        items={roadmap.practicalSkillsTrack}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 glass-card">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                    <Banknote className="w-3.5 h-3.5" />
+                    {TRANSLATIONS.results.roadmapSalary}
+                  </p>
+                  <p className="font-bold text-lg">{roadmap.salaryRange}</p>
+                </div>
+                <div className="p-4 glass-card">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    {TRANSLATIONS.results.roadmapDemand}
+                  </p>
+                  <p className="font-bold text-lg">{roadmap.jobDemand}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Learning Path */}
+        {prediction.learningPath && (
+          <div className="mb-8 md:mb-12">
+            <h4 className="text-lg md:text-xl font-bold mb-4 md:mb-6 uppercase tracking-wider">
+              {TRANSLATIONS.results.learning}
+            </h4>
+            <ul className="space-y-3 md:space-y-4">
+              {prediction.learningPath.map((step, i) => (
+                <li key={i} className="flex items-start gap-3 md:gap-4">
+                  <span className="font-mono text-xs md:text-sm mt-1 text-muted-foreground">
+                    {i + 1}.
+                  </span>
+                  <span className="text-sm md:text-base">{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+
+
+        {/* Core Action Plan — Missions */}
+        <div className="mb-8 md:mb-12 p-5 md:p-6 brutalist-border bg-foreground/5">
+          <div className="flex items-center gap-3 mb-4">
+            <Target className="w-4 h-4 text-accent" />
+            <h4 className="text-lg md:text-xl font-bold uppercase tracking-wider">
+              {TRANSLATIONS.results.missionsTitle}
+            </h4>
+          </div>
+          <p className="text-xs md:text-sm text-muted-foreground mb-4">
+            {TRANSLATIONS.results.missionsSubtitle}
+          </p>
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground">
+                {TRANSLATIONS.results.progressLabel}
+              </span>
+              <span className="text-xs font-mono font-bold text-accent">{progressPct}%</span>
+            </div>
+            <div className="h-2 bg-muted overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-accent to-foreground"
+                initial={false}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+          <ul className="space-y-2">
+            {missions.map((m, i) => {
+              const done = missionsDone[i];
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMissionsDone(prev => prev.map((v, j) => (j === i ? !v : v)))
+                    }
+                    className={`w-full flex items-center gap-3 p-3 md:p-4 border transition-all text-left ${
+                      done
+                        ? 'border-accent/50 bg-accent/5'
+                        : 'border-border hover:border-foreground/40 hover:bg-foreground/5'
+                    }`}
+                  >
+                    {done ? (
+                      <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
+                    )}
+                    <span className={`text-sm md:text-base ${done ? 'line-through text-muted-foreground' : ''}`}>
+                      {m}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Regional Opportunity Radar */}
+        <div className="mb-8 md:mb-12 p-5 md:p-6 brutalist-border bg-foreground/5">
+          <div className="flex items-center gap-3 mb-2">
+            <Radar className="w-4 h-4 text-accent" />
+            <h4 className="text-lg md:text-xl font-bold uppercase tracking-wider">
+              {TRANSLATIONS.results.radarTitle}
+            </h4>
+          </div>
+          <p className="text-xs md:text-sm text-muted-foreground mb-5">
+            {TRANSLATIONS.results.radarSubtitle}
+          </p>
+          <div className="space-y-3">
+            {regions.map((r, i) => (
+              <div key={r.city} className="flex items-center gap-3">
+                <span className="w-20 md:w-24 text-xs md:text-sm font-mono uppercase tracking-widest text-muted-foreground">
+                  {r.city}
+                </span>
+                <div className="flex-1 h-2.5 bg-muted overflow-hidden">
+                  <motion.div
+                    className={`h-full ${r.pct >= 75 ? 'bg-accent' : r.pct >= 50 ? 'bg-foreground' : 'bg-foreground/40'}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${r.pct}%` }}
+                    transition={{ duration: 0.7, delay: i * 0.08, ease: 'easeOut' }}
+                  />
+                </div>
+                <span className="w-12 text-right text-xs font-mono font-bold">{r.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+
+        {/* QR Code */}
+        <div className="mb-8 md:mb-12 p-6 brutalist-border bg-foreground/5 text-center">
+          <p className="text-sm uppercase tracking-wider text-muted-foreground mb-4">
+            {TRANSLATIONS.results.shareTitle}
+          </p>
+          <div className="inline-block p-3 bg-foreground">
+            <QRCodeSVG
+              value="https://busullafs.vercel.app"
+              size={120}
+              bgColor="hsl(0, 0%, 100%)"
+              fgColor="hsl(0, 0%, 2%)"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            {TRANSLATIONS.results.shareDescription}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-3 print:hidden">
+          <button
+            onClick={onStartInterview}
+            className="w-full p-6 md:p-8 bg-foreground text-background font-heading font-bold text-lg md:text-2xl uppercase brutalist-button hover:scale-[1.02] transition-all"
+          >
+            {TRANSLATIONS.results.practice} →
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="w-full p-4 brutalist-border hover:bg-foreground/10 transition-all font-bold uppercase text-sm flex items-center justify-center gap-2"
+          >
+            <Printer className="w-4 h-4 shrink-0" aria-hidden="true" />
+            {TRANSLATIONS.results.exportPdf}
+          </button>
+          <button
+            onClick={onRetakeQuiz}
+            className="w-full p-4 brutalist-border hover:bg-foreground/10 transition-all font-bold uppercase text-sm"
+          >
+            {TRANSLATIONS.common.tryAnother}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const RoadmapSection: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  items: string[];
+  numbered?: boolean;
+}> = ({ icon, title, items, numbered }) => (
+  <div className="p-4 brutalist-border bg-foreground/5">
+    <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+      {icon} {title}
+    </p>
+    <ul className="space-y-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-2 text-sm">
+          <span className="text-muted-foreground font-mono text-xs mt-0.5">
+            {numbered ? `${i + 1}.` : '--'}
+          </span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+const TrackCard: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  items: string[];
+}> = ({ icon, title, subtitle, items }) => (
+  <div className="p-4 md:p-5 glass-card border border-accent/20 h-full">
+    <div className="flex items-start gap-2.5 mb-3">
+      <span className="mt-0.5 text-accent shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-sm md:text-base font-bold intel-text-gradient leading-tight">{title}</p>
+        <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+    </div>
+    <ul className="space-y-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-2 text-xs md:text-sm">
+          <span className="text-accent font-mono text-[10px] mt-1 shrink-0">◆</span>
+          <span className="leading-relaxed">{item}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+export default Results;
