@@ -104,7 +104,7 @@ async function callGemini(prompt: string): Promise<string> {
 
   const model = genAI.getGenerativeModel({ model: MODEL_NAME });
   const result = await withTimeout(model.generateContent(prompt));
-  const response = result.response;
+  const response = (result as any).response;
   const text = response.text().trim();
   console.log('[Busulla] Gemini raw response:', text.substring(0, 300));
   return text;

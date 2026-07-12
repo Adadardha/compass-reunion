@@ -31,7 +31,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             className="w-full max-w-2xl max-h-[85vh] overflow-y-auto brutalist-border bg-background p-6 md:p-8"
-            onClick={e => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-6 gap-4">
               <div className="min-w-0">
