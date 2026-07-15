@@ -272,9 +272,9 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
                 <Home className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-lg font-bold uppercase tracking-wider intel-text-gradient">Mjedisi Ideal i Punës</h3>
+                <h3 className="text-lg font-bold uppercase tracking-wider intel-text-gradient">{c.idealEnv}</h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                  <Brain className="w-3 h-3" /> Bazuar në Modalitetin Gjithëpërfshirës
+                  <Brain className="w-3 h-3" /> {c.idealEnvSub}
                 </p>
               </div>
             </div>
