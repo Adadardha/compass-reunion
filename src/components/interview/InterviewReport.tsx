@@ -103,25 +103,25 @@ const InterviewReport: React.FC<InterviewReportProps> = ({ report, onNewIntervie
 
   const exportReport = () => {
     const reportText = `
-BUSULLA DIGJITALE - RAPORT I INTERVISTËS
+${c.reportHeader}
 ========================================
 
-Pozicioni: ${report.career}
-Mënyra: ${INTERVIEW_MODE_INFO[report.mode]?.name || report.mode}
-Kohëzgjatja: ${formatDuration(report.duration)}
+${c.position}: ${report.career}
+${c.mode}: ${INTERVIEW_MODE_INFO[report.mode]?.name || report.mode}
+${c.duration}: ${formatDuration(report.duration)}
 
-REZULTATI I PËRGJITHSHËM: ${report.overallScore}/100
-VENDIMI: ${verdictLabels[report.verdict]}
+${c.overall}: ${report.overallScore}/100
+${c.decision}: ${verdictLabels[report.verdict]}
 
-PËRMBLEDHJE:
+${c.summary}:
 ${report.summary}
 
-REKOMANDIME:
+${c.recommendations}:
 ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 ---
-Gjeneruar nga Busulla Digjitale
-Data: ${new Date().toLocaleDateString('sq-AL')}
+${c.generatedBy}
+${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-AL')}
     `.trim();
 
     const blob = new Blob([reportText], { type: 'text/plain' });
