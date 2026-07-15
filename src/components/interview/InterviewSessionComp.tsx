@@ -295,7 +295,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
               <div className="max-w-[85%] p-4 rounded-2xl rounded-tl-sm bg-card/60 border border-border">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {isEvaluating ? 'Feedback' : 'Intervistues'}
+                    {isEvaluating ? 'Feedback' : c.interviewer}
                   </p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
