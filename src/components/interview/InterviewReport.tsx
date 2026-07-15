@@ -195,7 +195,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
         {/* Congratulations or Weak Answers */}
         {isHired ? (
           <div className="mb-8 p-6 brutalist-border bg-success/10">
-            <h3 className="text-xl font-bold mb-3">Urime! Performanca juaj ishte e shkëlqyer!</h3>
+            <h3 className="text-xl font-bold mb-3">{c.congrats}</h3>
             <p className="text-muted-foreground mb-4">{report.summary}</p>
             <h4 className="text-sm font-bold uppercase mb-3">{TRANSLATIONS.interviewReport.nextSteps}:</h4>
             <ol className="space-y-2">
