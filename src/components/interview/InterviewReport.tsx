@@ -225,7 +225,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
                         <span className="text-sm font-bold text-destructive">{answer.score}/100</span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">
-                        Përgjigjja juaj: {answer.answer.substring(0, 100)}{answer.answer.length > 100 ? '...' : ''}
+                        {c.yourAnswer}: {answer.answer.substring(0, 100)}{answer.answer.length > 100 ? '...' : ''}
                       </p>
                       <div className="pt-2 border-t border-border">
                         <p className="text-xs font-bold uppercase text-warning mb-1 flex items-center gap-1.5">
