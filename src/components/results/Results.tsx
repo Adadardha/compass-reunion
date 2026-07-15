@@ -59,7 +59,9 @@ const Results: React.FC<ResultsProps> = ({ prediction: rawPrediction, mlScores: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawPrediction.primaryCareer]);
 
-  const matchPercent = pct(prediction.confidence);
+  // Safety fallback: guarantees the display never renders NaN or an
+  // undefined percentage if upstream classification returns 0 signal.
+  const matchPercent = pct(prediction.confidence) || 0;
 
   const missions = [
     TRANSLATIONS.results.mission1,
@@ -116,7 +118,7 @@ const Results: React.FC<ResultsProps> = ({ prediction: rawPrediction, mlScores: 
                 {TRANSLATIONS.results.confidence}
               </p>
               <p className="text-4xl md:text-6xl font-mono font-bold text-accent">
-                {matchPercent}%
+                {matchPercent || 0}%
               </p>
             </div>
           </div>

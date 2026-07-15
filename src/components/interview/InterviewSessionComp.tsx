@@ -3,8 +3,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb, Check, ArrowUp, Mic, MicOff, ClipboardList, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { InterviewSession as InterviewSessionType } from '../../types';
-import { TRANSLATIONS, DIFFICULTY_INFO, getLanguage } from '../../i18n';
+import { TRANSLATIONS, DIFFICULTY_INFO, getLanguage, useLanguage, type Language } from '../../i18n';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+
+// ---------- STAR + Interview label dictionary (bound to currentLang) ----------
+const starContent: Record<Language, {
+  title: string;
+  s: string; sDesc: string;
+  t: string; tDesc: string;
+  a: string; aDesc: string;
+  r: string; rDesc: string;
+  interviewer: string;
+  you: string;
+  average: string;
+  listening: string;
+}> = {
+  en: {
+    title: 'Response Structure (STAR Method)',
+    s: 'S — Situation', sDesc: 'Describe the concrete context.',
+    t: 'T — Task', tDesc: 'What was your responsibility?',
+    a: 'A — Action', aDesc: 'What specific steps did you take?',
+    r: 'R — Result', rDesc: 'What happened? Metrics/outcomes.',
+    interviewer: 'Interviewer',
+    you: 'You',
+    average: 'Average',
+    listening: 'Listening... Speak now.',
+  },
+  al: {
+    title: 'Struktura e Përgjigjes (Metoda STAR)',
+    s: 'S — Situata', sDesc: 'Përshkruani kontekstin konkret.',
+    t: 'T — Detyra', tDesc: 'Cila ishte përgjegjësia juaj?',
+    a: 'A — Veprimi', aDesc: 'Çfarë hapash konkretë ndërmorët?',
+    r: 'R — Rezultati', rDesc: 'Çfarë ndodhi? Matje/pasoja.',
+    interviewer: 'Intervistuesi',
+    you: 'Ju',
+    average: 'Mesatare',
+    listening: 'Duke dëgjuar... Flisni tani.',
+  },
+};
 
 interface InterviewSessionProps {
   session: InterviewSessionType;
@@ -34,38 +70,43 @@ const guardrailMessage = () =>
     : "Ju lutem, jepni një përgjigje pak më të detajuar që inteligjenca artificiale t'ju ndihmojë më mirë!";
 
 // ---------- STAR scaffold (neurodiversity mode) ----------
-const StarScaffold: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="glass-card p-4 md:p-5 border border-accent/30"
-  >
-    <div className="flex items-center gap-2 mb-3">
-      <ClipboardList className="w-4 h-4 text-accent" />
-      <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-accent">
-        Struktura e Përgjigjes (Metoda STAR)
-      </p>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-      {[
-        { l: 'S — Situata', d: 'Përshkruani kontekstin konkret.' },
-        { l: 'T — Detyra', d: 'Cila ishte përgjegjësia juaj?' },
-        { l: 'A — Veprimi', d: 'Çfarë hapash konkretë ndërmorët?' },
-        { l: 'R — Rezultati', d: 'Çfarë ndodhi? Matje/pasoja.' },
-      ].map(({ l, d }) => (
-        <div key={l} className="p-2 rounded border border-border/60 bg-background/40">
-          <p className="font-bold text-accent text-[11px] md:text-xs">{l}</p>
-          <p className="text-muted-foreground text-[11px] md:text-xs mt-0.5">{d}</p>
-        </div>
-      ))}
-    </div>
-  </motion.div>
-);
+const StarScaffold: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
+  const c = starContent[currentLang];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card p-4 md:p-5 border border-accent/30"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <ClipboardList className="w-4 h-4 text-accent" />
+        <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-accent">
+          {c.title}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
+        {[
+          { l: c.s, d: c.sDesc },
+          { l: c.t, d: c.tDesc },
+          { l: c.a, d: c.aDesc },
+          { l: c.r, d: c.rDesc },
+        ].map(({ l, d }) => (
+          <div key={l} className="p-2 rounded border border-border/60 bg-background/40">
+            <p className="font-bold text-accent text-[11px] md:text-xs">{l}</p>
+            <p className="text-muted-foreground text-[11px] md:text-xs mt-0.5">{d}</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
 
 const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
   session, userInput, isGeneratingQuestion, isEvaluating,
   onInputChange, onSubmitAnswer, onRequestHint, onFinish,
 }) => {
+  const { lang: currentLang } = useLanguage();
+  const c = starContent[currentLang];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const difficultyInfo = DIFFICULTY_INFO[session.currentDifficulty];
   const hintsRemaining = session.maxHints - session.hintsUsed;
@@ -74,13 +115,14 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
 
   const { listening, supported, start, stop } = useSpeechRecognition(
     (final) => {
-      // Append final to committed text
+      // Append final to committed text — preserves partial results
       const combined = (baseTextRef.current + ' ' + final).trim();
       baseTextRef.current = combined;
       onInputChange(combined);
       setInterimTranscript('');
     },
     (interim) => setInterimTranscript(interim),
+    currentLang,
   );
 
   useEffect(() => {
@@ -184,7 +226,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
 
         {session.neurodivergent && (
           <div className="mb-4">
-            <StarScaffold />
+            <StarScaffold currentLang={currentLang} />
           </div>
         )}
 
@@ -206,7 +248,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
                 }`}>
                   <div className="flex justify-between items-center mb-2 gap-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {msg.role === 'user' ? 'Ju' : 'Intervistues'}
+                      {msg.role === 'user' ? c.you : c.interviewer}
                       {msg.metadata?.isHint && ' · Hint'}
                     </p>
                     {msg.metadata?.difficulty && (
@@ -253,7 +295,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
               <div className="max-w-[85%] p-4 rounded-2xl rounded-tl-sm bg-card/60 border border-border">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {isEvaluating ? 'Feedback' : 'Intervistues'}
+                    {isEvaluating ? 'Feedback' : c.interviewer}
                   </p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
@@ -299,7 +341,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={
                 listening
-                  ? 'Duke dëgjuar... Flisni tani në shqip.'
+                  ? c.listening
                   : TRANSLATIONS.interviewSession.chatPlaceholder
               }
               className="w-full bg-background/40 border border-border rounded-lg p-4 pr-14 min-h-[110px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all"
