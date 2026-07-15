@@ -3,8 +3,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb, Check, ArrowUp, Mic, MicOff, ClipboardList, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { InterviewSession as InterviewSessionType } from '../../types';
-import { TRANSLATIONS, DIFFICULTY_INFO, getLanguage } from '../../i18n';
+import { TRANSLATIONS, DIFFICULTY_INFO, getLanguage, useLanguage, type Language } from '../../i18n';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+
+// ---------- STAR + Interview label dictionary (bound to currentLang) ----------
+const starContent: Record<Language, {
+  title: string;
+  s: string; sDesc: string;
+  t: string; tDesc: string;
+  a: string; aDesc: string;
+  r: string; rDesc: string;
+  interviewer: string;
+  you: string;
+  average: string;
+  listening: string;
+}> = {
+  en: {
+    title: 'Response Structure (STAR Method)',
+    s: 'S — Situation', sDesc: 'Describe the concrete context.',
+    t: 'T — Task', tDesc: 'What was your responsibility?',
+    a: 'A — Action', aDesc: 'What specific steps did you take?',
+    r: 'R — Result', rDesc: 'What happened? Metrics/outcomes.',
+    interviewer: 'Interviewer',
+    you: 'You',
+    average: 'Average',
+    listening: 'Listening... Speak now.',
+  },
+  al: {
+    title: 'Struktura e Përgjigjes (Metoda STAR)',
+    s: 'S — Situata', sDesc: 'Përshkruani kontekstin konkret.',
+    t: 'T — Detyra', tDesc: 'Cila ishte përgjegjësia juaj?',
+    a: 'A — Veprimi', aDesc: 'Çfarë hapash konkretë ndërmorët?',
+    r: 'R — Rezultati', rDesc: 'Çfarë ndodhi? Matje/pasoja.',
+    interviewer: 'Intervistuesi',
+    you: 'Ju',
+    average: 'Mesatare',
+    listening: 'Duke dëgjuar... Flisni tani.',
+  },
+};
 
 interface InterviewSessionProps {
   session: InterviewSessionType;
