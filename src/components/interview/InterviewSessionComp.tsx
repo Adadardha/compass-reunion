@@ -105,6 +105,8 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
   session, userInput, isGeneratingQuestion, isEvaluating,
   onInputChange, onSubmitAnswer, onRequestHint, onFinish,
 }) => {
+  const { lang: currentLang } = useLanguage();
+  const c = starContent[currentLang];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const difficultyInfo = DIFFICULTY_INFO[session.currentDifficulty];
   const hintsRemaining = session.maxHints - session.hintsUsed;
@@ -113,13 +115,14 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
 
   const { listening, supported, start, stop } = useSpeechRecognition(
     (final) => {
-      // Append final to committed text
+      // Append final to committed text — preserves partial results
       const combined = (baseTextRef.current + ' ' + final).trim();
       baseTextRef.current = combined;
       onInputChange(combined);
       setInterimTranscript('');
     },
     (interim) => setInterimTranscript(interim),
+    currentLang,
   );
 
   useEffect(() => {
