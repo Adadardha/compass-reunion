@@ -184,7 +184,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
               <p className="text-xl font-mono">{formatDuration(report.duration)}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Mënyra</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{c.mode}</p>
               <p className="text-xl">
                 {INTERVIEW_MODE_INFO[report.mode]?.name || report.mode}
               </p>
