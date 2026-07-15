@@ -341,7 +341,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={
                 listening
-                  ? 'Duke dëgjuar... Flisni tani në shqip.'
+                  ? c.listening
                   : TRANSLATIONS.interviewSession.chatPlaceholder
               }
               className="w-full bg-background/40 border border-border rounded-lg p-4 pr-14 min-h-[110px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all"
