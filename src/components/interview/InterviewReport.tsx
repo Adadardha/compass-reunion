@@ -68,6 +68,8 @@ interface InterviewReportProps {
 }
 
 const InterviewReport: React.FC<InterviewReportProps> = ({ report, onNewInterview, onBackToResults }) => {
+  const { lang: currentLang } = useLanguage();
+  const c = reportContent[currentLang];
   const verdictColors = {
     hired: 'bg-success/20 text-success border-success',
     consider: 'bg-warning/20 text-warning border-warning',
