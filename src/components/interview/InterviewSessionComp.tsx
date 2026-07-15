@@ -248,7 +248,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
                 }`}>
                   <div className="flex justify-between items-center mb-2 gap-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {msg.role === 'user' ? 'Ju' : 'Intervistues'}
+                      {msg.role === 'user' ? c.you : c.interviewer}
                       {msg.metadata?.isHint && ' · Hint'}
                     </p>
                     {msg.metadata?.difficulty && (
