@@ -70,33 +70,36 @@ const guardrailMessage = () =>
     : "Ju lutem, jepni një përgjigje pak më të detajuar që inteligjenca artificiale t'ju ndihmojë më mirë!";
 
 // ---------- STAR scaffold (neurodiversity mode) ----------
-const StarScaffold: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="glass-card p-4 md:p-5 border border-accent/30"
-  >
-    <div className="flex items-center gap-2 mb-3">
-      <ClipboardList className="w-4 h-4 text-accent" />
-      <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-accent">
-        Struktura e Përgjigjes (Metoda STAR)
-      </p>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-      {[
-        { l: 'S — Situata', d: 'Përshkruani kontekstin konkret.' },
-        { l: 'T — Detyra', d: 'Cila ishte përgjegjësia juaj?' },
-        { l: 'A — Veprimi', d: 'Çfarë hapash konkretë ndërmorët?' },
-        { l: 'R — Rezultati', d: 'Çfarë ndodhi? Matje/pasoja.' },
-      ].map(({ l, d }) => (
-        <div key={l} className="p-2 rounded border border-border/60 bg-background/40">
-          <p className="font-bold text-accent text-[11px] md:text-xs">{l}</p>
-          <p className="text-muted-foreground text-[11px] md:text-xs mt-0.5">{d}</p>
-        </div>
-      ))}
-    </div>
-  </motion.div>
-);
+const StarScaffold: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
+  const c = starContent[currentLang];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card p-4 md:p-5 border border-accent/30"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <ClipboardList className="w-4 h-4 text-accent" />
+        <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-accent">
+          {c.title}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
+        {[
+          { l: c.s, d: c.sDesc },
+          { l: c.t, d: c.tDesc },
+          { l: c.a, d: c.aDesc },
+          { l: c.r, d: c.rDesc },
+        ].map(({ l, d }) => (
+          <div key={l} className="p-2 rounded border border-border/60 bg-background/40">
+            <p className="font-bold text-accent text-[11px] md:text-xs">{l}</p>
+            <p className="text-muted-foreground text-[11px] md:text-xs mt-0.5">{d}</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
 
 const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
   session, userInput, isGeneratingQuestion, isEvaluating,
