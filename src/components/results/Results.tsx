@@ -118,7 +118,7 @@ const Results: React.FC<ResultsProps> = ({ prediction: rawPrediction, mlScores: 
                 {TRANSLATIONS.results.confidence}
               </p>
               <p className="text-4xl md:text-6xl font-mono font-bold text-accent">
-                {matchPercent}%
+                {matchPercent || 0}%
               </p>
             </div>
           </div>
