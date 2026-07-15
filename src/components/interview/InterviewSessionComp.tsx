@@ -226,7 +226,7 @@ const InterviewSessionComponent: React.FC<InterviewSessionProps> = ({
 
         {session.neurodivergent && (
           <div className="mb-4">
-            <StarScaffold />
+            <StarScaffold currentLang={currentLang} />
           </div>
         )}
 
