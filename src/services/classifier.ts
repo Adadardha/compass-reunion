@@ -28,7 +28,110 @@ function cosine(a: TraitVector, b: TraitVector): number {
   return mag === 0 ? 0 : dot / mag;
 }
 
+const QUESTION_OPTION_TRAITS: Record<number, Partial<TraitVector>[]> = {
+  1: [
+    { analitik: 2, teknik: 1, hulumtues: 1 },
+    { social: 2, lider: 1, organizues: 1 },
+    { organizues: 1, social: 1, analitik: 1 },
+    { social: 2, sipërmarrës: 1, kujdesar: 1 },
+  ],
+  2: [
+    { analitik: 3, teknik: 2, hulumtues: 1 },
+    { krijues: 3, vizual: 2 },
+    { kujdesar: 3, social: 2 },
+    { sipërmarrës: 3, lider: 1, organizues: 1 },
+  ],
+  3: [
+    { analitik: 3, teknik: 1, hulumtues: 1 },
+    { krijues: 2, vizual: 1, sipërmarrës: 1 },
+    { social: 2, lider: 2, organizues: 1 },
+    { organizues: 3, kujdesar: 1 },
+  ],
+  4: [
+    { analitik: 3, teknik: 2, hulumtues: 1 },
+    { social: 3, lider: 2, sipërmarrës: 1 },
+    { vizual: 3, krijues: 3 },
+    { organizues: 3, lider: 2 },
+  ],
+  5: [
+    { organizues: 2, lider: 1, sipërmarrës: 1 },
+    { krijues: 3, vizual: 2 },
+    { social: 2, kujdesar: 2, sipërmarrës: 1 },
+    { analitik: 1, teknik: 1, hulumtues: 1 },
+  ],
+  6: [
+    { teknik: 3, hulumtues: 2, analitik: 1 },
+    { organizues: 2, analitik: 1 },
+    { organizues: 2, kujdesar: 1 },
+    { kujdesar: 2, social: 2 },
+  ],
+  7: [
+    { analitik: 2, hulumtues: 2, teknik: 1 },
+    { teknik: 2, sipërmarrës: 1, krijues: 1 },
+    { social: 3, lider: 1 },
+    { vizual: 2, krijues: 1 },
+  ],
+  8: [
+    { analitik: 2, teknik: 2, hulumtues: 2 },
+    { lider: 3, organizues: 2, social: 1 },
+    { sipërmarrës: 3, lider: 2, krijues: 1 },
+    { kujdesar: 3, social: 2 },
+  ],
+  9: [
+    { analitik: 2, teknik: 1, organizues: 1 },
+    { social: 2, kujdesar: 1 },
+    { kujdesar: 2, organizues: 1 },
+    { social: 2, lider: 1, hulumtues: 1 },
+  ],
+  10: [
+    { teknik: 3, analitik: 2, hulumtues: 2 },
+    { social: 3, kujdesar: 2, hulumtues: 1 },
+    { sipërmarrës: 3, lider: 2, organizues: 1 },
+    { kujdesar: 3, hulumtues: 2, analitik: 1 },
+  ],
+};
+
 const OPTION_TRAITS: Array<[string, Partial<TraitVector>]> = [
+  ['alone, in a quiet',        { analitik: 2, teknik: 1, hulumtues: 1 }],
+  ['on a team, with constant collaboration', { social: 2, lider: 1, organizues: 1 }],
+  ['hybrid',                   { organizues: 1, social: 1, analitik: 1 }],
+  ['constantly on the move',   { social: 2, sipërmarrës: 1, kujdesar: 1 }],
+  ['solving complex technical problems', { analitik: 3, teknik: 2, hulumtues: 1 }],
+  ['creating something visual',          { krijues: 3, vizual: 2 }],
+  ['directly helping other people',      { kujdesar: 3, social: 2 }],
+  ['hitting financial goals',            { sipërmarrës: 3, lider: 1, organizues: 1 }],
+  ['i analyze the data',        { analitik: 3, teknik: 1, hulumtues: 1 }],
+  ['intuition and creativity',  { krijues: 2, vizual: 1, sipërmarrës: 1 }],
+  ['i ask the team',            { social: 2, lider: 2, organizues: 1 }],
+  ['i stay calm and follow',    { organizues: 3, kujdesar: 1 }],
+  ['analytical thinking and mathematics', { analitik: 3, teknik: 2, hulumtues: 1 }],
+  ['communication and persuasion',        { social: 3, lider: 2, sipërmarrës: 1 }],
+  ['design and aesthetics',               { vizual: 3, krijues: 3 }],
+  ['organization and time management',    { organizues: 3, lider: 2 }],
+  ['a modern corporate office',           { organizues: 2, lider: 1, sipërmarrës: 1 }],
+  ['a creative studio',                   { krijues: 3, vizual: 2 }],
+  ['in the field',                        { social: 2, kujdesar: 2, sipërmarrës: 1 }],
+  ['from home or a co-working',           { analitik: 1, teknik: 1, hulumtues: 1 }],
+  ['essential — i want to work with cutting-edge technology', { teknik: 3, hulumtues: 2, analitik: 1 }],
+  ['important, but stability',            { organizues: 2, analitik: 1 }],
+  ['moderate — i prefer proven methods',  { organizues: 2, kujdesar: 1 }],
+  ["it doesn't matter, as long as",       { kujdesar: 2, social: 2 }],
+  ['i learn by reading',                  { analitik: 2, hulumtues: 2, teknik: 1 }],
+  ['i learn by doing',                    { teknik: 2, sipërmarrës: 1, krijues: 1 }],
+  ['i learn through discussions',         { social: 3, lider: 1 }],
+  ['i learn through videos',              { vizual: 2, krijues: 1 }],
+  ['to become an expert',                 { analitik: 2, teknik: 2, hulumtues: 2 }],
+  ['to manage a large team',              { lider: 3, organizues: 2, social: 1 }],
+  ['to start my own business',            { sipërmarrës: 3, lider: 2, krijues: 1 }],
+  ['to contribute to a social cause',     { kujdesar: 3, social: 2 }],
+  ['by focusing fully',                   { analitik: 2, teknik: 1, organizues: 1 }],
+  ['by taking short breaks',              { social: 2, kujdesar: 1 }],
+  ['by meditating',                       { kujdesar: 2, organizues: 1 }],
+  ['by asking for input',                 { social: 2, lider: 1, hulumtues: 1 }],
+  ['computer science and ai',             { teknik: 3, analitik: 2, hulumtues: 2 }],
+  ['psychology and social sciences',      { social: 3, kujdesar: 2, hulumtues: 1 }],
+  ['management and economics',            { sipërmarrës: 3, lider: 2, organizues: 1 }],
+  ['medicine and life sciences',          { kujdesar: 3, hulumtues: 2, analitik: 1 }],
   ['vetëm, në një mjedis',        { analitik: 2, teknik: 1, hulumtues: 1 }],
   ['në ekip, me bashkëpunim',     { social: 2, lider: 1, organizues: 1 }],
   ['hibrid',                       { organizues: 1, social: 1, analitik: 1 }],
@@ -204,6 +307,15 @@ const CAREER_PROFILES: CareerProfile[] = [
 function encodeAnswers(answers: QuizAnswer[]): TraitVector {
   const vec = zeroVector();
   for (const ans of answers) {
+    const indexedTraits = typeof ans.optionIndex === 'number'
+      ? QUESTION_OPTION_TRAITS[ans.questionId]?.[ans.optionIndex]
+      : undefined;
+
+    if (indexedTraits) {
+      addVec(vec, indexedTraits);
+      continue;
+    }
+
     const lower = ans.answer.toLowerCase();
     for (const [key, traits] of OPTION_TRAITS) {
       if (lower.includes(key)) {
@@ -240,37 +352,43 @@ export function classifyCareer(answers: QuizAnswer[]): ClassifierResult[] {
     score: cosine(userVec, profileToVector(profile)),
   })).sort((a, b) => b.score - a.score);
 
-  const topScore = scored[0].score || 1;
+  const topScore = scored[0]?.score ?? 0;
 
   return scored.map(({ profile, score }) => ({
     career: profile.name,
     score,
-    confidence: score / topScore,
+    confidence: topScore > 0 ? score / topScore : 0,
     description: profile.description,
     learningPath: profile.learningPath,
   }));
+}
+
+function safeRounded(value: number): number {
+  return Number.isFinite(value) ? parseFloat(value.toFixed(2)) : 0;
 }
 
 export function classifyToPrediction(answers: QuizAnswer[]): PredictionResult {
   const ranked = classifyCareer(answers);
   const [first, second, third] = ranked;
 
-  const rawConfidence = first.score;
-  const normalised = Math.min(0.97, Math.max(0.52, 0.52 + rawConfidence * 0.48));
+  const topScore = first?.score ?? 0;
+  const runnerUpScore = second?.score ?? 0;
+  const margin = topScore > 0 ? Math.max(0, (topScore - runnerUpScore) / topScore) : 0;
+  const confidence = topScore > 0 ? Math.min(0.97, topScore * (0.82 + margin * 0.18)) : 0;
 
   return {
     primaryCareer: first.career,
-    confidence: parseFloat(normalised.toFixed(2)),
+    confidence: safeRounded(confidence),
     description: first.description,
     alternatives: [
       {
         career: second.career,
-        confidence: parseFloat((normalised * (second.score / first.score)).toFixed(2)),
+        confidence: safeRounded(topScore > 0 ? confidence * (second.score / topScore) : 0),
         description: second.description,
       },
       {
         career: third.career,
-        confidence: parseFloat((normalised * (third.score / first.score)).toFixed(2)),
+        confidence: safeRounded(topScore > 0 ? confidence * (third.score / topScore) : 0),
         description: third.description,
       },
     ],

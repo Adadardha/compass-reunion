@@ -12,12 +12,13 @@ const Quiz: React.FC<QuizProps> = ({ onComplete }) => {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [customValue, setCustomValue] = useState('');
 
-  const handleAnswer = (answer: string, isCustom = false) => {
+  const handleAnswer = (answer: string, isCustom = false, optionIndex?: number) => {
     const newAnswers = [...answers];
     newAnswers[currentIndex] = {
       questionId: QUIZ_QUESTIONS[currentIndex].id,
       answer,
       isCustom,
+      optionIndex,
     };
     setAnswers(newAnswers);
     setCustomValue('');
@@ -82,7 +83,7 @@ const Quiz: React.FC<QuizProps> = ({ onComplete }) => {
               {question.options.map((option, i) => (
                 <button
                   key={i}
-                  onClick={() => handleAnswer(option)}
+                  onClick={() => handleAnswer(option, false, i)}
                   className="w-full text-left p-4 md:p-6 brutalist-border hover:bg-foreground hover:text-background transition-all text-sm md:text-base group"
                 >
                   <span className="font-mono text-xs mr-3 md:mr-4 text-muted-foreground group-hover:text-background/60">
