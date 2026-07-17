@@ -13,6 +13,7 @@ export interface QuizAnswer {
   questionId: number;
   answer: string;
   isCustom: boolean;
+  optionIndex?: number;
 }
 
 export interface AlternativeCareer {
