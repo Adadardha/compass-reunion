@@ -47,11 +47,6 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <Section icon={SECTION_ICONS.team} title={TRANSLATIONS.about.team} text={TRANSLATIONS.about.teamText} />
               <Section icon={SECTION_ICONS.tech} title={TRANSLATIONS.about.tech} text={TRANSLATIONS.about.techText} />
 
-              <div className="pt-4 border-t border-border text-center">
-                <p className="text-xs text-muted-foreground">
-                  Digital Compass · National Science Festival 2026 — Albania
-                </p>
-              </div>
             </div>
           </motion.div>
         </motion.div>
