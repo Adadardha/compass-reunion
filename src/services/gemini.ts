@@ -399,21 +399,89 @@ function getFallbackQuestion(
   // OpenVINO GenAI `LLMPipeline` API (INT8 quantized), avoiding the network
   // round-trip and enabling reliable operation on low-spec Albanian school
   // hardware — CPU, integrated GPU, or Intel NPU.
+  //
+  // Fallback pool is bilingual and resolved at call time via `getLanguage()`
+  // so an EN→AL toggle takes effect on the very next question without any
+  // component reload.
+  const lang = getLanguage();
+  const pick = <T,>(en: T, al: T) => (lang === 'en' ? en : al);
+
   const technicalQs = [
-    { question: `Walk me through a specific technical challenge you faced as a ${career}. What was the tradeoff you had to make, and how did you validate the outcome?`, type: 'technical' as const, hints: ['Name the exact tools or systems involved', 'Describe the decision point clearly', 'Quantify the result with a metric if possible'] },
-    { question: `If you had to onboard a junior ${career} in your first week, which three concepts would you teach first and why those three?`, type: 'technical' as const, hints: ['Prioritize foundational over trendy', 'Explain the reasoning behind the order', 'Connect each concept to real work'] },
-    { question: 'Describe a time you had to reason under uncertainty — incomplete data, ambiguous requirements, or a novel problem. What was your framework?', type: 'technical' as const, hints: ['State your assumptions explicitly', 'Explain how you reduced uncertainty', 'Share what you would repeat or change'] },
+    {
+      question: pick(
+        `Walk me through a specific technical challenge you faced as a ${career}. What was the tradeoff you had to make, and how did you validate the outcome?`,
+        `Më tregoni për një sfidë konkrete teknike që keni hasur si ${career}. Cili ishte kompromisi që ju desh të bënit dhe si e verifikuat rezultatin?`,
+      ),
+      type: 'technical' as const,
+      hints: pick(
+        ['Name the exact tools or systems involved', 'Describe the decision point clearly', 'Quantify the result with a metric if possible'],
+        ['Emërtoni mjetet ose sistemet konkrete', 'Përshkruani qartë pikën e vendimit', 'Sasi rezultatin me një metrikë nëse është e mundur'],
+      ),
+    },
+    {
+      question: pick(
+        `If you had to onboard a junior ${career} in your first week, which three concepts would you teach first and why those three?`,
+        `Nëse do t'ju duhej të orientonit një ${career} të ri në javën e parë, cilat tre koncepte do t'i mësonit të parat dhe pse pikërisht ato tre?`,
+      ),
+      type: 'technical' as const,
+      hints: pick(
+        ['Prioritize foundational over trendy', 'Explain the reasoning behind the order', 'Connect each concept to real work'],
+        ['Jepini përparësi bazave para trendeve', 'Shpjegoni arsyetimin pas radhës', 'Lidheni çdo koncept me punë reale'],
+      ),
+    },
+    {
+      question: pick(
+        'Describe a time you had to reason under uncertainty — incomplete data, ambiguous requirements, or a novel problem. What was your framework?',
+        'Përshkruani një rast kur ju desh të arsyetonit nën pasiguri — të dhëna të paplota, kërkesa të paqarta ose një problem i ri. Cila ishte qasja juaj?',
+      ),
+      type: 'technical' as const,
+      hints: pick(
+        ['State your assumptions explicitly', 'Explain how you reduced uncertainty', 'Share what you would repeat or change'],
+        ['Shprehni qartë supozimet tuaja', 'Shpjegoni si e reduktuat pasigurinë', 'Ndani çfarë do të përsërisnit ose ndryshonit'],
+      ),
+    },
   ];
   const behavioralQs = [
-    { question: 'Tell me about a moment your work was directly challenged by a stakeholder or teammate. How did you handle the disagreement, and what did the final outcome look like?', type: 'behavioral' as const, hints: ['Use the STAR structure (Situation, Task, Action, Result)', 'Focus on the process, not the win', 'Reflect on what you learned about yourself'] },
-    { question: 'Describe the most ambiguous project you have owned. How did you translate vague expectations into a concrete plan?', type: 'behavioral' as const, hints: ['Show how you defined success', 'Explain how you kept stakeholders aligned', 'Cite a specific artifact — plan, doc, milestone'] },
-    { question: 'Give me a specific example of feedback that changed how you work. What was the feedback, and what did you do differently afterwards?', type: 'behavioral' as const, hints: ['Be honest — avoid rehearsed clichés', 'Explain the behavior change concretely', 'Show measurable follow-through'] },
+    {
+      question: pick(
+        'Tell me about a moment your work was directly challenged by a stakeholder or teammate. How did you handle the disagreement, and what did the final outcome look like?',
+        'Më tregoni për një moment kur puna juaj u sfidua drejtpërdrejt nga një palë e interesuar ose kolegu. Si e trajtuat mosmarrëveshjen dhe cili ishte rezultati përfundimtar?',
+      ),
+      type: 'behavioral' as const,
+      hints: pick(
+        ['Use the STAR structure (Situation, Task, Action, Result)', 'Focus on the process, not the win', 'Reflect on what you learned about yourself'],
+        ['Përdorni strukturën STAR (Situata, Detyra, Veprimi, Rezultati)', 'Përqendrohuni te procesi, jo te fitorja', 'Reflektoni për çfarë mësuat për veten'],
+      ),
+    },
+    {
+      question: pick(
+        'Describe the most ambiguous project you have owned. How did you translate vague expectations into a concrete plan?',
+        'Përshkruani projektin më të paqartë që keni drejtuar. Si i përkthyet pritshmëritë e vagullta në një plan konkret?',
+      ),
+      type: 'behavioral' as const,
+      hints: pick(
+        ['Show how you defined success', 'Explain how you kept stakeholders aligned', 'Cite a specific artifact — plan, doc, milestone'],
+        ['Tregoni si e përcaktuat suksesin', 'Shpjegoni si i mbajtët palët e interesuara në linjë', 'Përmendni një artefakt konkret — plan, dokument, etapë'],
+      ),
+    },
+    {
+      question: pick(
+        'Give me a specific example of feedback that changed how you work. What was the feedback, and what did you do differently afterwards?',
+        'Jepni një shembull konkret të një reagimi që ndryshoi mënyrën si punoni. Cili ishte reagimi dhe çfarë bëtë ndryshe më pas?',
+      ),
+      type: 'behavioral' as const,
+      hints: pick(
+        ['Be honest — avoid rehearsed clichés', 'Explain the behavior change concretely', 'Show measurable follow-through'],
+        ['Jini të sinqertë — shmangni klishetë e provuara', 'Shpjegoni ndryshimin e sjelljes në mënyrë konkrete', 'Tregoni ndjekje të matshme'],
+      ),
+    },
   ];
   const pool = mode === InterviewMode.BEHAVIORAL ? behavioralQs :
     mode === InterviewMode.TECHNICAL ? technicalQs :
     [...technicalQs, ...behavioralQs];
   return pool[Math.floor(Math.random() * pool.length)];
 }
+
 
 // Answer Evaluation
 
