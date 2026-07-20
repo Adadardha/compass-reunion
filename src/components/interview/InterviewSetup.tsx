@@ -145,7 +145,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
                   <p className="text-xs md:text-sm text-muted-foreground mt-1">{info.description}</p>
                   {isSelected && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-3 text-xs font-bold uppercase">
-                      E ZGJEDHUR
+                      {cc.selected}
                     </motion.div>
                   )}
                 </motion.button>
