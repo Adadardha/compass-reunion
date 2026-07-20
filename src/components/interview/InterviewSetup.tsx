@@ -52,6 +52,9 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
   prediction, selectedMode, selectedDifficulty, neurodivergent,
   onModeChange, onDifficultyChange, onNeurodivergentChange, onStart,
 }) => {
+  const { lang } = useLanguage();
+  const activeLang: 'en' | 'al' = lang || 'al';
+  const cc = configContent[activeLang];
   const modes = [InterviewMode.TECHNICAL, InterviewMode.BEHAVIORAL, InterviewMode.MIXED, InterviewMode.STRESS];
   const difficulties = [DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD];
 
