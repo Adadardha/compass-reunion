@@ -367,28 +367,46 @@ function safeRounded(value: number): number {
   return Number.isFinite(value) ? parseFloat(value.toFixed(2)) : 0;
 }
 
+/**
+ * Normalize a raw cosine score (0..1) into a realistic UI match percentage.
+ * Top matches should land in a 45%–98% band rather than hovering at ~20%.
+ * Mirrors the requested formula:
+ *   normalized = min(98, max(round(raw * 100 * 1.25), 45))
+ */
+function normalizeConfidence(rawCosine: number): number {
+  if (!Number.isFinite(rawCosine) || rawCosine <= 0) return 0;
+  const rawPercentage = rawCosine * 100;
+  const normalized = Math.min(98, Math.max(Math.round(rawPercentage * 1.25), 45));
+  return normalized / 100;
+}
+
 export function classifyToPrediction(answers: QuizAnswer[]): PredictionResult {
   const ranked = classifyCareer(answers);
   const [first, second, third] = ranked;
 
   const topScore = first?.score ?? 0;
-  const runnerUpScore = second?.score ?? 0;
-  const margin = topScore > 0 ? Math.max(0, (topScore - runnerUpScore) / topScore) : 0;
-  const confidence = topScore > 0 ? Math.min(0.97, topScore * (0.82 + margin * 0.18)) : 0;
+  const primaryConfidence = normalizeConfidence(topScore);
+
+  // Alternatives scale proportionally to the top but stay below it.
+  const scaleAlt = (score: number) => {
+    if (topScore <= 0 || score <= 0) return 0;
+    const ratio = score / topScore;
+    return safeRounded(Math.max(0.35, primaryConfidence * ratio * 0.92));
+  };
 
   return {
     primaryCareer: first.career,
-    confidence: safeRounded(confidence),
+    confidence: safeRounded(primaryConfidence),
     description: first.description,
     alternatives: [
       {
         career: second.career,
-        confidence: safeRounded(topScore > 0 ? confidence * (second.score / topScore) : 0),
+        confidence: scaleAlt(second?.score ?? 0),
         description: second.description,
       },
       {
         career: third.career,
-        confidence: safeRounded(topScore > 0 ? confidence * (third.score / topScore) : 0),
+        confidence: scaleAlt(third?.score ?? 0),
         description: third.description,
       },
     ],

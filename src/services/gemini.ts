@@ -503,6 +503,11 @@ export const evaluateAnswerWithFeedback = async (
 MODALITETI GJITHËPËRFSHIRËS (NEURODIVERSITY SUPPORT MODE) — I AKTIVIZUAR:
 Fokuso vlerësimin te qëndrueshmëria arkitektonike dhe shprehja objektive e aftësive teknike/logjike, jo te kliçetë sjellorë ("passion", "team spirit", kontakti me sy). NUK duhet të penalizosh mungesën e gjuhës sociale-korporative. Vlerëso: qartësinë strukturore, saktësinë faktike, dhe zbatueshmërinë teknike. Nëse përgjigjja është e strukturuar sipas metodës STAR (Situata / Detyra / Veprimi / Rezultati), lëvdo strukturën.` : '';
 
+    const activeLang = getLanguage();
+    const starDirective = activeLang === 'en'
+      ? `\nSTAR EVALUATION CONTEXT — Act as an expert career coach analyzing this response for a candidate targeting the ${career} role. Evaluate the answer using the STAR method (Situation, Task, Action, Result): note explicitly whether each STAR element is present, partial, or missing, and weight the score accordingly. Provide 3 specific strengths and 2 actionable areas for improvement tied to STAR gaps. Respond strictly in English.`
+      : `\nKONTEKST VLERËSIMI STAR — Vepro si trajner ekspert karriere duke analizuar përgjigjen për një kandidat që synon pozicionin ${career}. Vlerëso përgjigjen sipas metodës STAR (Situata, Detyra, Veprimi, Rezultati): shëno qartë nëse secili element STAR është i pranishëm, i pjesshëm ose mungon, dhe peshoje rezultatin në përputhje. Jep 3 pika të forta konkrete dhe 2 fusha të veprueshme përmirësimi të lidhura me boshllëqet STAR. Përgjigju rreptësisht në shqip.`;
+
     const prompt = `${languageDirective()}
 
 You are an elite, empathetic Talent Acquisition Director evaluating a live interview response for the position of ${career}. You give precise, actionable, specific feedback — never generic compliments.
@@ -510,7 +515,7 @@ You are an elite, empathetic Talent Acquisition Director evaluating a live inter
 Question: ${question}
 Candidate response: "${answer}"
 Interview mode: ${mode}
-Difficulty: ${difficulty}${neurodivergentAppendix}
+Difficulty: ${difficulty}${neurodivergentAppendix}${starDirective}
 
 STRICT EVALUATION RULES (follow without exception):
 1. If the response is empty, "I don't know", "nuk e di", "se di", "skam ide", "idk", or any equivalent non-answer — score MUST be 0. In "strengths" write: "None — the candidate offered no answer." In "improvements" write: "In a real interview, saying 'I don't know' without attempting is unacceptable. Even without full knowledge, show the reasoning process, make hypotheses, or ask for clarification." In "detailedFeedback" explain concretely how to structure a response when uncertain.
@@ -526,10 +531,10 @@ Feedback must be SPECIFIC — reference the exact phrases, gaps, or claims in th
 
 Return ONLY valid JSON (no markdown, no fences):
 {
-  "score": <number 0-100>,
-  "strengths": ["specific strength citing the response", "another specific strength"],
-  "improvements": ["specific, actionable improvement", "another"],
-  "detailedFeedback": "2-3 sentences of precise, direct, constructive feedback",
+  "score": <number 0-100 out of 100>,
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+  "improvements": ["specific actionable improvement 1", "specific actionable improvement 2"],
+  "detailedFeedback": "2-3 sentences of precise, direct, constructive feedback tied to STAR",
   "technicalAccuracy": <0-100>,
   "communication": <0-100>,
   "problemSolving": <0-100>
@@ -790,41 +795,74 @@ export const getCareerAssistantResponse = async (
     weakAreas?: string[];
   },
 ): Promise<string> => {
-  try {
-    const recentHistory = chatHistory.slice(-8).map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
+  const activeLang = getLanguage();
+  const systemPrompt = activeLang === 'en'
+    ? `You are Busulla Digjitale's AI career coach assistant. Help the user with concise, smart guidance regarding career paths, resume tips, and interview prep.${userContext?.careerPath ? ` The user is exploring: ${userContext.careerPath}.` : ''}${userContext?.weakAreas?.length ? ` Weak areas to address: ${userContext.weakAreas.join(', ')}.` : ''} Respond strictly in English.`
+    : `Ti je asistenti i inteligjencës artificiale të Busulla Digjitale. Ndihmo përdoruesin me këshilla të sakta dhe të shkurtra për karrierën, përgatitjen e CV-së dhe intervistat.${userContext?.careerPath ? ` Përdoruesi po eksploron: ${userContext.careerPath}.` : ''}${userContext?.weakAreas?.length ? ` Fusha të dobëta për t'u trajtuar: ${userContext.weakAreas.join(', ')}.` : ''} Përgjigju rreptësisht në shqip.`;
 
+  const recentHistory = chatHistory.slice(-8).map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  // 1) Preferred path: Lovable Cloud edge function (no client key needed).
+  try {
     const { data, error } = await supabase.functions.invoke('career-chat', {
       body: {
         message,
         history: recentHistory,
         careerPath: userContext?.careerPath,
         weakAreas: userContext?.weakAreas,
+        systemPrompt,
+        language: activeLang,
       },
     });
 
-    if (error) {
-      console.error('[Busulla] chat function error:', error);
-      throw error;
-    }
-
+    if (error) throw error;
     if (data?.error === 'rate_limit') {
-      return 'Kërkesat po vijnë shumë shpejt. Prit pak sekonda dhe provo përsëri.';
+      return activeLang === 'en'
+        ? 'Requests are coming too fast. Wait a few seconds and try again.'
+        : 'Kërkesat po vijnë shumë shpejt. Prit pak sekonda dhe provo përsëri.';
     }
     if (data?.error === 'payment_required') {
-      return 'Shërbimi AI ka arritur limitin ditor. Provo më vonë.';
+      return activeLang === 'en'
+        ? 'The AI service has reached its daily limit. Try again later.'
+        : 'Shërbimi AI ka arritur limitin ditor. Provo më vonë.';
     }
-
     const content = (data?.content || '').toString().trim();
-    if (!content) {
-      return 'Faleminderit për pyetjen! Si këshilltar karriere, jam këtu për të ndihmuar me orientimin profesional. Mund të pyesësh për karriera, universitete, ose përgatitjen për tregun e punës në Shqipëri.';
-    }
-    return content;
+    if (content) return content;
   } catch (err) {
-    console.error('[Busulla] chat error:', err);
-    return 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
+    console.warn('[Busulla] edge chat failed, attempting direct Gemini fallback:', err);
   }
+
+  // 2) Direct Gemini fallback — repairs the chatbot when the edge function
+  // is unavailable. Reads the key from Vite env (client) or Node env (SSR/tests).
+  const apiKey =
+    (import.meta as any)?.env?.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined' ? (process as any).env?.GEMINI_API_KEY : undefined);
+
+  if (apiKey) {
+    try {
+      const client = new GoogleGenerativeAI(apiKey);
+      const model = client.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: systemPrompt,
+      });
+      const historyText = recentHistory
+        .map(m => `${m.role === 'user' ? 'USER' : 'ASSISTANT'}: ${m.content}`)
+        .join('\n');
+      const prompt = `${historyText ? historyText + '\n' : ''}USER: ${message}\nASSISTANT:`;
+      const result = await withTimeout(model.generateContent(prompt));
+      const text = (result as any).response.text().trim();
+      if (text) return text;
+    } catch (err) {
+      console.error('[Busulla] direct Gemini fallback error:', err);
+    }
+  }
+
+  return activeLang === 'en'
+    ? 'The assistant connection is unavailable right now. Try again in a few seconds — the quiz and mock interview are also available.'
+    : 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
 };
+
 

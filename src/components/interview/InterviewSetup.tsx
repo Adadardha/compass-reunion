@@ -2,7 +2,33 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Settings, Users, Shuffle, Zap, Brain, Check } from 'lucide-react';
 import { InterviewMode, DifficultyLevel, PredictionResult } from '../../types';
-import { TRANSLATIONS, INTERVIEW_MODE_INFO, DIFFICULTY_INFO } from '../../i18n';
+import { TRANSLATIONS, INTERVIEW_MODE_INFO, DIFFICULTY_INFO, useLanguage } from '../../i18n';
+
+const configContent = {
+  en: {
+    neurodiversityTitle: 'Neurodiversity & Accessibility Support',
+    neurodiversityBadge: 'For Neurodiversity',
+    neurodiversityDesc:
+      'Support for learners on the autism spectrum, with ADHD, or high social anxiety. Structured prompts without idioms, and a visual STAR scaffold during answers.',
+    adhdModule: 'ADHD Focus Mode',
+    adhdDesc: 'Provides structured prompts, extra time, and chunked questions.',
+    autismModule: 'Autism-Friendly Mode',
+    autismDesc: 'Uses direct, literal wording and eliminates ambiguous phrasing.',
+    selected: 'SELECTED',
+  },
+  al: {
+    neurodiversityTitle: 'Modaliteti Gjithëpërfshirës',
+    neurodiversityBadge: 'Për Neurodiversitetin',
+    neurodiversityDesc:
+      'Mbështetje për nxënësit në spektrin autik, me ADHD, ose me ankth të lartë social. Pyetje të strukturuara, pa idioma, dhe një skelet vizual STAR gjatë përgjigjeve.',
+    adhdModule: 'Moduli për ADHD',
+    adhdDesc: 'Ofron pyetje të strukturuara, kohë shtesë dhe hapa të ndarë.',
+    autismModule: 'Moduli i Përshtatur për Autizëm',
+    autismDesc: 'Përdor pyetje direkte, me kuptim të qartë dhe pa dykuptimësi.',
+    selected: 'E ZGJEDHUR',
+  },
+} as const;
+
 
 const MODE_ICONS: Record<string, React.ReactNode> = {
   technical: <Settings className="w-5 h-5" />,
@@ -26,6 +52,9 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
   prediction, selectedMode, selectedDifficulty, neurodivergent,
   onModeChange, onDifficultyChange, onNeurodivergentChange, onStart,
 }) => {
+  const { lang } = useLanguage();
+  const activeLang: 'en' | 'al' = lang || 'al';
+  const cc = configContent[activeLang];
   const modes = [InterviewMode.TECHNICAL, InterviewMode.BEHAVIORAL, InterviewMode.MIXED, InterviewMode.STRESS];
   const difficulties = [DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD];
 
@@ -85,7 +114,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
                   </div>
                   {isSelected && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-3 text-xs font-bold uppercase text-accent">
-                      E ZGJEDHUR
+                      {cc.selected}
                     </motion.div>
                   )}
                 </motion.button>
@@ -116,7 +145,7 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
                   <p className="text-xs md:text-sm text-muted-foreground mt-1">{info.description}</p>
                   {isSelected && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-3 text-xs font-bold uppercase">
-                      E ZGJEDHUR
+                      {cc.selected}
                     </motion.div>
                   )}
                 </motion.button>
@@ -145,15 +174,24 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="font-bold text-base md:text-lg">Modaliteti Gjithëpërfshirës</p>
+                  <p className="font-bold text-base md:text-lg">{cc.neurodiversityTitle}</p>
                   <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-accent/40 text-accent">
-                    Për Neurodiversitetin
+                    {cc.neurodiversityBadge}
                   </span>
                 </div>
                 <p className="text-xs md:text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                  Mbështetje për nxënësit në spektrin autik, me ADHD, ose me ankth të lartë social.
-                  Pyetje të strukturuara, pa idioma, dhe një skelet vizual STAR gjatë përgjigjeve.
+                  {cc.neurodiversityDesc}
                 </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded border border-border/60 bg-background/40">
+                    <p className="font-semibold">{cc.adhdModule}</p>
+                    <p className="text-muted-foreground mt-0.5">{cc.adhdDesc}</p>
+                  </div>
+                  <div className="p-2 rounded border border-border/60 bg-background/40">
+                    <p className="font-semibold">{cc.autismModule}</p>
+                    <p className="text-muted-foreground mt-0.5">{cc.autismDesc}</p>
+                  </div>
+                </div>
               </div>
               <div className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
                 neurodivergent ? 'bg-accent' : 'bg-muted/40'
