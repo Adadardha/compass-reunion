@@ -2,7 +2,33 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Settings, Users, Shuffle, Zap, Brain, Check } from 'lucide-react';
 import { InterviewMode, DifficultyLevel, PredictionResult } from '../../types';
-import { TRANSLATIONS, INTERVIEW_MODE_INFO, DIFFICULTY_INFO } from '../../i18n';
+import { TRANSLATIONS, INTERVIEW_MODE_INFO, DIFFICULTY_INFO, useLanguage } from '../../i18n';
+
+const configContent = {
+  en: {
+    neurodiversityTitle: 'Neurodiversity & Accessibility Support',
+    neurodiversityBadge: 'For Neurodiversity',
+    neurodiversityDesc:
+      'Support for learners on the autism spectrum, with ADHD, or high social anxiety. Structured prompts without idioms, and a visual STAR scaffold during answers.',
+    adhdModule: 'ADHD Focus Mode',
+    adhdDesc: 'Provides structured prompts, extra time, and chunked questions.',
+    autismModule: 'Autism-Friendly Mode',
+    autismDesc: 'Uses direct, literal wording and eliminates ambiguous phrasing.',
+    selected: 'SELECTED',
+  },
+  al: {
+    neurodiversityTitle: 'Modaliteti Gjithëpërfshirës',
+    neurodiversityBadge: 'Për Neurodiversitetin',
+    neurodiversityDesc:
+      'Mbështetje për nxënësit në spektrin autik, me ADHD, ose me ankth të lartë social. Pyetje të strukturuara, pa idioma, dhe një skelet vizual STAR gjatë përgjigjeve.',
+    adhdModule: 'Moduli për ADHD',
+    adhdDesc: 'Ofron pyetje të strukturuara, kohë shtesë dhe hapa të ndarë.',
+    autismModule: 'Moduli i Përshtatur për Autizëm',
+    autismDesc: 'Përdor pyetje direkte, me kuptim të qartë dhe pa dykuptimësi.',
+    selected: 'E ZGJEDHUR',
+  },
+} as const;
+
 
 const MODE_ICONS: Record<string, React.ReactNode> = {
   technical: <Settings className="w-5 h-5" />,
