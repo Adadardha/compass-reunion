@@ -174,15 +174,24 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="font-bold text-base md:text-lg">Modaliteti Gjithëpërfshirës</p>
+                  <p className="font-bold text-base md:text-lg">{cc.neurodiversityTitle}</p>
                   <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-accent/40 text-accent">
-                    Për Neurodiversitetin
+                    {cc.neurodiversityBadge}
                   </span>
                 </div>
                 <p className="text-xs md:text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                  Mbështetje për nxënësit në spektrin autik, me ADHD, ose me ankth të lartë social.
-                  Pyetje të strukturuara, pa idioma, dhe një skelet vizual STAR gjatë përgjigjeve.
+                  {cc.neurodiversityDesc}
                 </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded border border-border/60 bg-background/40">
+                    <p className="font-semibold">{cc.adhdModule}</p>
+                    <p className="text-muted-foreground mt-0.5">{cc.adhdDesc}</p>
+                  </div>
+                  <div className="p-2 rounded border border-border/60 bg-background/40">
+                    <p className="font-semibold">{cc.autismModule}</p>
+                    <p className="text-muted-foreground mt-0.5">{cc.autismDesc}</p>
+                  </div>
+                </div>
               </div>
               <div className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
                 neurodivergent ? 'bg-accent' : 'bg-muted/40'
