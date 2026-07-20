@@ -503,6 +503,11 @@ export const evaluateAnswerWithFeedback = async (
 MODALITETI GJITHËPËRFSHIRËS (NEURODIVERSITY SUPPORT MODE) — I AKTIVIZUAR:
 Fokuso vlerësimin te qëndrueshmëria arkitektonike dhe shprehja objektive e aftësive teknike/logjike, jo te kliçetë sjellorë ("passion", "team spirit", kontakti me sy). NUK duhet të penalizosh mungesën e gjuhës sociale-korporative. Vlerëso: qartësinë strukturore, saktësinë faktike, dhe zbatueshmërinë teknike. Nëse përgjigjja është e strukturuar sipas metodës STAR (Situata / Detyra / Veprimi / Rezultati), lëvdo strukturën.` : '';
 
+    const activeLang = getLanguage();
+    const starDirective = activeLang === 'en'
+      ? `\nSTAR EVALUATION CONTEXT — Act as an expert career coach analyzing this response for a candidate targeting the ${career} role. Evaluate the answer using the STAR method (Situation, Task, Action, Result): note explicitly whether each STAR element is present, partial, or missing, and weight the score accordingly. Provide 3 specific strengths and 2 actionable areas for improvement tied to STAR gaps. Respond strictly in English.`
+      : `\nKONTEKST VLERËSIMI STAR — Vepro si trajner ekspert karriere duke analizuar përgjigjen për një kandidat që synon pozicionin ${career}. Vlerëso përgjigjen sipas metodës STAR (Situata, Detyra, Veprimi, Rezultati): shëno qartë nëse secili element STAR është i pranishëm, i pjesshëm ose mungon, dhe peshoje rezultatin në përputhje. Jep 3 pika të forta konkrete dhe 2 fusha të veprueshme përmirësimi të lidhura me boshllëqet STAR. Përgjigju rreptësisht në shqip.`;
+
     const prompt = `${languageDirective()}
 
 You are an elite, empathetic Talent Acquisition Director evaluating a live interview response for the position of ${career}. You give precise, actionable, specific feedback — never generic compliments.
@@ -510,7 +515,7 @@ You are an elite, empathetic Talent Acquisition Director evaluating a live inter
 Question: ${question}
 Candidate response: "${answer}"
 Interview mode: ${mode}
-Difficulty: ${difficulty}${neurodivergentAppendix}
+Difficulty: ${difficulty}${neurodivergentAppendix}${starDirective}
 
 STRICT EVALUATION RULES (follow without exception):
 1. If the response is empty, "I don't know", "nuk e di", "se di", "skam ide", "idk", or any equivalent non-answer — score MUST be 0. In "strengths" write: "None — the candidate offered no answer." In "improvements" write: "In a real interview, saying 'I don't know' without attempting is unacceptable. Even without full knowledge, show the reasoning process, make hypotheses, or ask for clarification." In "detailedFeedback" explain concretely how to structure a response when uncertain.
@@ -526,10 +531,10 @@ Feedback must be SPECIFIC — reference the exact phrases, gaps, or claims in th
 
 Return ONLY valid JSON (no markdown, no fences):
 {
-  "score": <number 0-100>,
-  "strengths": ["specific strength citing the response", "another specific strength"],
-  "improvements": ["specific, actionable improvement", "another"],
-  "detailedFeedback": "2-3 sentences of precise, direct, constructive feedback",
+  "score": <number 0-100 out of 100>,
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+  "improvements": ["specific actionable improvement 1", "specific actionable improvement 2"],
+  "detailedFeedback": "2-3 sentences of precise, direct, constructive feedback tied to STAR",
   "technicalAccuracy": <0-100>,
   "communication": <0-100>,
   "problemSolving": <0-100>
