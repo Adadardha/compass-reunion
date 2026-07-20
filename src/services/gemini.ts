@@ -795,41 +795,74 @@ export const getCareerAssistantResponse = async (
     weakAreas?: string[];
   },
 ): Promise<string> => {
-  try {
-    const recentHistory = chatHistory.slice(-8).map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
+  const activeLang = getLanguage();
+  const systemPrompt = activeLang === 'en'
+    ? `You are Busulla Digjitale's AI career coach assistant. Help the user with concise, smart guidance regarding career paths, resume tips, and interview prep.${userContext?.careerPath ? ` The user is exploring: ${userContext.careerPath}.` : ''}${userContext?.weakAreas?.length ? ` Weak areas to address: ${userContext.weakAreas.join(', ')}.` : ''} Respond strictly in English.`
+    : `Ti je asistenti i inteligjencës artificiale të Busulla Digjitale. Ndihmo përdoruesin me këshilla të sakta dhe të shkurtra për karrierën, përgatitjen e CV-së dhe intervistat.${userContext?.careerPath ? ` Përdoruesi po eksploron: ${userContext.careerPath}.` : ''}${userContext?.weakAreas?.length ? ` Fusha të dobëta për t'u trajtuar: ${userContext.weakAreas.join(', ')}.` : ''} Përgjigju rreptësisht në shqip.`;
 
+  const recentHistory = chatHistory.slice(-8).map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  // 1) Preferred path: Lovable Cloud edge function (no client key needed).
+  try {
     const { data, error } = await supabase.functions.invoke('career-chat', {
       body: {
         message,
         history: recentHistory,
         careerPath: userContext?.careerPath,
         weakAreas: userContext?.weakAreas,
+        systemPrompt,
+        language: activeLang,
       },
     });
 
-    if (error) {
-      console.error('[Busulla] chat function error:', error);
-      throw error;
-    }
-
+    if (error) throw error;
     if (data?.error === 'rate_limit') {
-      return 'Kërkesat po vijnë shumë shpejt. Prit pak sekonda dhe provo përsëri.';
+      return activeLang === 'en'
+        ? 'Requests are coming too fast. Wait a few seconds and try again.'
+        : 'Kërkesat po vijnë shumë shpejt. Prit pak sekonda dhe provo përsëri.';
     }
     if (data?.error === 'payment_required') {
-      return 'Shërbimi AI ka arritur limitin ditor. Provo më vonë.';
+      return activeLang === 'en'
+        ? 'The AI service has reached its daily limit. Try again later.'
+        : 'Shërbimi AI ka arritur limitin ditor. Provo më vonë.';
     }
-
     const content = (data?.content || '').toString().trim();
-    if (!content) {
-      return 'Faleminderit për pyetjen! Si këshilltar karriere, jam këtu për të ndihmuar me orientimin profesional. Mund të pyesësh për karriera, universitete, ose përgatitjen për tregun e punës në Shqipëri.';
-    }
-    return content;
+    if (content) return content;
   } catch (err) {
-    console.error('[Busulla] chat error:', err);
-    return 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
+    console.warn('[Busulla] edge chat failed, attempting direct Gemini fallback:', err);
   }
+
+  // 2) Direct Gemini fallback — repairs the chatbot when the edge function
+  // is unavailable. Reads the key from Vite env (client) or Node env (SSR/tests).
+  const apiKey =
+    (import.meta as any)?.env?.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined' ? (process as any).env?.GEMINI_API_KEY : undefined);
+
+  if (apiKey) {
+    try {
+      const client = new GoogleGenerativeAI(apiKey);
+      const model = client.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: systemPrompt,
+      });
+      const historyText = recentHistory
+        .map(m => `${m.role === 'user' ? 'USER' : 'ASSISTANT'}: ${m.content}`)
+        .join('\n');
+      const prompt = `${historyText ? historyText + '\n' : ''}USER: ${message}\nASSISTANT:`;
+      const result = await withTimeout(model.generateContent(prompt));
+      const text = (result as any).response.text().trim();
+      if (text) return text;
+    } catch (err) {
+      console.error('[Busulla] direct Gemini fallback error:', err);
+    }
+  }
+
+  return activeLang === 'en'
+    ? 'The assistant connection is unavailable right now. Try again in a few seconds — the quiz and mock interview are also available.'
+    : 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
 };
+
 
