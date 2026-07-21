@@ -339,7 +339,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
             {TRANSLATIONS.interviewReport.newInterview} →
           </button>
           <button onClick={exportReport} className="brutalist-border p-4 md:p-6 hover:bg-foreground/10 transition-all font-bold uppercase">
-            {TRANSLATIONS.interviewReport.exportReport}
+            {c.downloadReport}
           </button>
           <button onClick={onBackToResults} className="brutalist-border p-4 md:p-6 hover:bg-foreground/10 transition-all">
             {TRANSLATIONS.interviewReport.backToResults}
