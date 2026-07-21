@@ -169,7 +169,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h2 className="text-2xl md:text-4xl font-heading font-bold">{TRANSLATIONS.interviewReport.title}</h2>
+            <h2 className="text-2xl md:text-4xl font-heading font-bold">{c.title}</h2>
             <p className="text-sm text-muted-foreground mt-1">{report.career}</p>
           </div>
           <div className={`px-4 py-2 border-2 ${verdictColors[report.verdict]} font-bold text-lg uppercase`}>
