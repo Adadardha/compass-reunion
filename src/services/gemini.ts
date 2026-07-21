@@ -767,15 +767,21 @@ You MUST return valid JSON only. No markdown, no explanation, no code fences, no
 // Hint Generator
 
 export const getHint = async (question: string, career: string): Promise<string> => {
-  if (!GEMINI_API_KEY) return 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+  const activeLang = getLanguage();
+  const fallback = activeLang === 'en'
+    ? 'Think about your prior experiences and how they apply to this scenario.'
+    : 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+
+  if (!GEMINI_API_KEY) return fallback;
 
   try {
-    const text = await callGemini(
-      `${languageDirective()}\n\nYou are a career mentor. For the question: "${question}" in the context of the career ${career}, give a short hint (1-2 sentences) that helps the candidate without revealing the answer. Do not use emoji.`
-    );
-    return text || 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+    const prompt = activeLang === 'en'
+      ? `You are a career mentor. For the question: "${question}" in the context of the ${career} role, give a short hint (1-2 sentences) that helps the candidate without revealing the answer. Respond strictly in English. No emoji.`
+      : `Ti je një mentor karriere. Për pyetjen: "${question}" në kontekstin e pozicionit ${career}, jep një sugjerim të shkurtër (1-2 fjali) që e ndihmon kandidatin pa zbuluar përgjigjen. Përgjigju rreptësisht në shqip. Pa emoji.`;
+    const text = await callGemini(prompt);
+    return text || fallback;
   } catch {
-    return 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+    return fallback;
   }
 };
 
