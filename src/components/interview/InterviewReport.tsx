@@ -180,7 +180,7 @@ ${c.date}: ${new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : 'sq-
         {/* Score Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="brutalist-border bg-foreground/5 p-6 text-center">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{TRANSLATIONS.interviewReport.overallScore}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{c.average}</p>
             <div className="relative w-32 h-32 mx-auto">
               <svg className="w-full h-full transform -rotate-90">
                 <circle cx="64" cy="64" r="56" stroke="hsl(var(--muted))" strokeWidth="8" fill="none" />
