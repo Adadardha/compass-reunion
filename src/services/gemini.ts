@@ -489,138 +489,135 @@ export const evaluateAnswerWithFeedback = async (
   career: string,
   question: string,
   answer: string,
-  mode: InterviewMode,
-  difficulty: DifficultyLevel,
+  _mode: InterviewMode,
+  _difficulty: DifficultyLevel,
   neurodivergent: boolean = false,
 ): Promise<InterviewFeedback> => {
-  if (!GEMINI_API_KEY) {
-    return estimateScoreFromAnswer(answer);
+  const activeLang = getLanguage();
+
+  // Non-answer short-circuit — never call the API for empty / "idk" style input.
+  const trimmed = (answer || '').trim();
+  const nonAnswerPatterns = [
+    /^s'?e\s*di\.?$/i, /^se\s*di\.?$/i, /^spo\s*di\.?$/i,
+    /^nuk\s*e\s*di\.?$/i, /^s'?kam\s*ide\.?$/i, /^skam\s*ide\.?$/i,
+    /^nuk\s*kam\s*ide\.?$/i, /^i\s*don'?t\s*know\.?$/i,
+    /^idk\.?$/i, /^no\s*idea\.?$/i, /^-+$/, /^\.+$/, /^\?+$/,
+  ];
+  if (!trimmed || nonAnswerPatterns.some(p => p.test(trimmed.toLowerCase()))) {
+    return activeLang === 'en'
+      ? {
+          score: 0,
+          strengths: ['None — the candidate offered no answer.'],
+          improvements: [
+            'In a real interview, saying "I don\'t know" without attempting is unacceptable.',
+            'Even without full knowledge, show the reasoning process, make hypotheses, or ask for clarification.',
+          ],
+          detailedFeedback: 'A non-answer cannot be evaluated. When uncertain: paraphrase the question to buy time, separate what you know from what you don\'t, and reason out loud with grounded hypotheses.',
+          technicalAccuracy: 0, communication: 0, problemSolving: 0,
+        }
+      : {
+          score: 0,
+          strengths: ['Asnjë — kandidati nuk ka ofruar përgjigje.'],
+          improvements: [
+            'Të thuash "nuk e di" pa u përpjekur është e papranueshme në intervistë.',
+            'Edhe pa njohuri të plota, trego procesin e të menduarit ose bëj hipoteza.',
+          ],
+          detailedFeedback: 'Një jo-përgjigje nuk mund të vlerësohet. Kur nuk je i sigurt: parafrazoje pyetjen, ndaj atë që di nga ajo që nuk di, dhe arsyeto me hipoteza të bazuara.',
+          technicalAccuracy: 0, communication: 0, problemSolving: 0,
+        };
   }
 
-  const attempt = async (): Promise<InterviewFeedback> => {
-    const neurodivergentAppendix = neurodivergent ? `
+  if (!GEMINI_API_KEY) {
+    // No key — return a neutral, honest signal instead of a fabricated word-count score.
+    return activeLang === 'en'
+      ? {
+          score: 50,
+          strengths: ['Answer submitted for review'],
+          improvements: ['AI scoring unavailable — configure VITE_GEMINI_API_KEY for real evaluation.'],
+          detailedFeedback: 'The AI evaluator is not configured. Provide a Gemini API key to receive detailed STAR-based feedback.',
+          technicalAccuracy: 50, communication: 50, problemSolving: 50,
+        }
+      : {
+          score: 50,
+          strengths: ['Përgjigjja u dërgua për vlerësim'],
+          improvements: ['Vlerësimi AI mungon — konfiguro VITE_GEMINI_API_KEY për vlerësim real.'],
+          detailedFeedback: 'Vlerësuesi AI nuk është i konfiguruar. Shto çelësin Gemini për të marrë vlerësim të detajuar STAR.',
+          technicalAccuracy: 50, communication: 50, problemSolving: 50,
+        };
+  }
 
-MODALITETI GJITHËPËRFSHIRËS (NEURODIVERSITY SUPPORT MODE) — I AKTIVIZUAR:
-Fokuso vlerësimin te qëndrueshmëria arkitektonike dhe shprehja objektive e aftësive teknike/logjike, jo te kliçetë sjellorë ("passion", "team spirit", kontakti me sy). NUK duhet të penalizosh mungesën e gjuhës sociale-korporative. Vlerëso: qartësinë strukturore, saktësinë faktike, dhe zbatueshmërinë teknike. Nëse përgjigjja është e strukturuar sipas metodës STAR (Situata / Detyra / Veprimi / Rezultati), lëvdo strukturën.` : '';
+  const neurodivergentAppendix = neurodivergent
+    ? '\n\nINCLUSION MODE ACTIVE: Do not penalize the absence of social-corporate phrasing. Weight structural clarity, factual accuracy, and technical applicability.'
+    : '';
 
-    const activeLang = getLanguage();
-    const starDirective = activeLang === 'en'
-      ? `\nSTAR EVALUATION CONTEXT — Act as an expert career coach analyzing this response for a candidate targeting the ${career} role. Evaluate the answer using the STAR method (Situation, Task, Action, Result): note explicitly whether each STAR element is present, partial, or missing, and weight the score accordingly. Provide 3 specific strengths and 2 actionable areas for improvement tied to STAR gaps. Respond strictly in English.`
-      : `\nKONTEKST VLERËSIMI STAR — Vepro si trajner ekspert karriere duke analizuar përgjigjen për një kandidat që synon pozicionin ${career}. Vlerëso përgjigjen sipas metodës STAR (Situata, Detyra, Veprimi, Rezultati): shëno qartë nëse secili element STAR është i pranishëm, i pjesshëm ose mungon, dhe peshoje rezultatin në përputhje. Jep 3 pika të forta konkrete dhe 2 fusha të veprueshme përmirësimi të lidhura me boshllëqet STAR. Përgjigju rreptësisht në shqip.`;
+  const prompt = `You are a strict, professional hiring manager and interview coach evaluating an interview answer for a candidate targeting the ${career} role.
 
-    const prompt = `${languageDirective()}
+Question asked: "${question}"
 
-You are an elite, empathetic Talent Acquisition Director evaluating a live interview response for the position of ${career}. You give precise, actionable, specific feedback — never generic compliments.
+Candidate's spoken answer: "${answer}"
 
-Question: ${question}
-Candidate response: "${answer}"
-Interview mode: ${mode}
-Difficulty: ${difficulty}${neurodivergentAppendix}${starDirective}
-
-STRICT EVALUATION RULES (follow without exception):
-1. If the response is empty, "I don't know", "nuk e di", "se di", "skam ide", "idk", or any equivalent non-answer — score MUST be 0. In "strengths" write: "None — the candidate offered no answer." In "improvements" write: "In a real interview, saying 'I don't know' without attempting is unacceptable. Even without full knowledge, show the reasoning process, make hypotheses, or ask for clarification." In "detailedFeedback" explain concretely how to structure a response when uncertain.
-2. If the response is irrelevant to the question: score 0-10.
-3. 1-2 words (but attempting): score 5-15.
-4. Short, superficial, no examples: score 15-35.
-5. Average with few details: score 35-55.
-6. Good response with concrete examples: score 55-72.
-7. Detailed with deep analysis: score 72-88.
-8. Excellent, expert-level with concrete examples and reflection: score 88-100.
-
-Feedback must be SPECIFIC — reference the exact phrases, gaps, or claims in the candidate's response. Do NOT compliment unless earned. Match the language of the candidate's response (English or Albanian).
-
-Return ONLY valid JSON (no markdown, no fences):
+CRITICAL INSTRUCTIONS:
+- If the candidate's answer is gibberish, extremely short (e.g. "idk", "asdf"), or completely off-topic, assign an overall score of 0 to 15 out of 100 and explicitly point out why.
+- If the answer is reasonable, evaluate it rigorously using the STAR method (Situation, Task, Action, Result).
+- Respond ONLY in valid JSON matching this exact structure:
 {
-  "score": <number 0-100 out of 100>,
-  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
-  "improvements": ["specific actionable improvement 1", "specific actionable improvement 2"],
-  "detailedFeedback": "2-3 sentences of precise, direct, constructive feedback tied to STAR",
-  "technicalAccuracy": <0-100>,
-  "communication": <0-100>,
-  "problemSolving": <0-100>
-}`;
+  "overallScore": number,
+  "starBreakdown": {
+    "situation": "string rating/comment",
+    "task": "string rating/comment",
+    "action": "string rating/comment",
+    "result": "string rating/comment"
+  },
+  "strengths": ["string", "string"],
+  "improvements": ["string", "string"],
+  "coachingTip": "string"
+}
 
+IMPORTANT: The language of your JSON values (strengths, improvements, coachingTip, starBreakdown) MUST BE strictly in ${activeLang === 'en' ? 'English' : 'Albanian'}.${neurodivergentAppendix}${STRICT_JSON_INSTRUCTION}`;
 
-    const text = await callGemini(prompt);
-    const parsed = safeParse<InterviewFeedback | null>(text, null);
-
-    if (parsed && typeof parsed.score === 'number' && parsed.strengths && parsed.improvements) {
-      // Clamp score
-      parsed.score = Math.max(0, Math.min(100, parsed.score));
-      if (parsed.technicalAccuracy != null) parsed.technicalAccuracy = Math.max(0, Math.min(100, parsed.technicalAccuracy));
-      if (parsed.communication != null) parsed.communication = Math.max(0, Math.min(100, parsed.communication));
-      if (parsed.problemSolving != null) parsed.problemSolving = Math.max(0, Math.min(100, parsed.problemSolving));
-      return parsed;
-    }
-
-    throw new Error('Invalid parsed feedback');
-  };
-
-  // Try twice before falling back
   try {
-    return await withRetry(attempt, 1, 1500);
+    const text = await withRetry(async () => callGemini(prompt), 1, 1500);
+    const parsed = safeParse<any>(text, null);
+    if (parsed && typeof parsed.overallScore === 'number') {
+      const score = Math.max(0, Math.min(100, Math.round(parsed.overallScore)));
+      const star = parsed.starBreakdown || {};
+      const starLines = [
+        star.situation && `S: ${star.situation}`,
+        star.task && `T: ${star.task}`,
+        star.action && `A: ${star.action}`,
+        star.result && `R: ${star.result}`,
+      ].filter(Boolean).join(' · ');
+      const tip = parsed.coachingTip ? ` ${parsed.coachingTip}` : '';
+      return {
+        score,
+        strengths: Array.isArray(parsed.strengths) && parsed.strengths.length ? parsed.strengths : [activeLang === 'en' ? 'Answer submitted' : 'Përgjigjja u dërgua'],
+        improvements: Array.isArray(parsed.improvements) && parsed.improvements.length ? parsed.improvements : [activeLang === 'en' ? 'Add more concrete detail' : 'Shto më shumë detaje konkrete'],
+        detailedFeedback: `${starLines}${tip}`.trim() || (activeLang === 'en' ? 'STAR evaluation returned no detail.' : 'Vlerësimi STAR nuk ktheu detaje.'),
+        technicalAccuracy: score,
+        communication: score,
+        problemSolving: score,
+      };
+    }
+    throw new Error('Invalid parsed feedback');
   } catch (err) {
-    console.warn('[Busulla] evaluateAnswer failed after retries:', err);
-    return estimateScoreFromAnswer(answer);
+    console.warn('[Busulla] evaluateAnswer failed:', err);
+    return activeLang === 'en'
+      ? {
+          score: 50,
+          strengths: ['Answer received'],
+          improvements: ['AI evaluator temporarily unavailable — try again.'],
+          detailedFeedback: 'The AI evaluator did not return a valid response for this answer.',
+          technicalAccuracy: 50, communication: 50, problemSolving: 50,
+        }
+      : {
+          score: 50,
+          strengths: ['Përgjigjja u pranua'],
+          improvements: ['Vlerësuesi AI nuk u përgjigj — provo përsëri.'],
+          detailedFeedback: 'Vlerësuesi AI nuk ktheu një përgjigje të vlefshme për këtë përgjigje.',
+          technicalAccuracy: 50, communication: 50, problemSolving: 50,
+        };
   }
 };
-
-function estimateScoreFromAnswer(answer: string): InterviewFeedback {
-  const trimmed = answer.trim().toLowerCase();
-  const nonAnswerPatterns = [
-    /^s'?e\s*di\.?$/i,
-    /^se\s*di\.?$/i,
-    /^spo\s*di\.?$/i,
-    /^nuk\s*e\s*di\.?$/i,
-    /^s'?kam\s*ide\.?$/i,
-    /^skam\s*ide\.?$/i,
-    /^nuk\s*kam\s*ide\.?$/i,
-    /^i\s*don'?t\s*know\.?$/i,
-    /^idk\.?$/i,
-    /^no\s*idea\.?$/i,
-    /^-+$/,
-    /^\.+$/,
-    /^\?+$/,
-  ];
-  const isNonAnswer = trimmed.length === 0 || nonAnswerPatterns.some(p => p.test(trimmed));
-
-  if (isNonAnswer) {
-    return {
-      score: 0,
-      strengths: ['Asnjë - kandidati nuk ka ofruar përgjigje.'],
-      improvements: [
-        'Të thuash "nuk e di" pa u përpjekur është e papranueshme në intervistë.',
-        'Edhe pa njohuri të plota, trego procesin e të menduarit ose bëj hipoteza.',
-      ],
-      detailedFeedback: 'Një jo-përgjigje nuk mund të vlerësohet pozitivisht. Në një intervistë reale, kur nuk je i sigurt, provoni: 1) të parafrazoni pyetjen për të fituar kohë, 2) të ndani atë që dini nga ajo që nuk dini, 3) të bëni hipoteza të bazuara në logjikë. Heshtja ose "nuk e di" e mbyllin bisedën.',
-      technicalAccuracy: 0,
-      communication: 0,
-      problemSolving: 0,
-    };
-  }
-
-  const wordCount = trimmed.split(/\s+/).length;
-  let score: number;
-  if (wordCount <= 2) score = 8;
-  else if (wordCount <= 10) score = 22;
-  else if (wordCount <= 30) score = 45;
-  else if (wordCount <= 60) score = 65;
-  else score = 78;
-
-  return {
-    score,
-    strengths: wordCount > 10 ? ['Përgjigjja ka përmbajtje relevante'] : ['Kandidati provoi të përgjigjej me pak fjalë'],
-    improvements: wordCount <= 10
-      ? ['Shto shumë më shumë detaje dhe shembuj konkretë', 'Përgjigjja ishte shumë e shkurtër']
-      : ['Mund të shtosh më shumë shembuj praktikë'],
-    detailedFeedback: wordCount <= 10
-      ? 'Përgjigjja ishte shumë e shkurtër. Në një intervistë reale, duhet të jepni përgjigje të detajuara me shembuj konkretë.'
-      : 'Përgjigjja ka bazë të mirë. Mund të përmirësohet duke shtuar shembuj më konkretë dhe duke treguar rezultate specifike.',
-    technicalAccuracy: Math.max(score - 10, 0),
-    communication: Math.min(score + 10, 100),
-    problemSolving: score,
-  };
-}
 
 // Adaptive Difficulty
 
