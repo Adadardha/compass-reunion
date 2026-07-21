@@ -51,7 +51,9 @@ function languageDirective(): string {
 }
 
 // Config
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
+  (typeof process !== 'undefined' && process.env?.VITE_GEMINI_API_KEY) ||
+  '';
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const MODEL_NAME = 'gemini-2.0-flash';
 const TIMEOUT_MS = 15000;
