@@ -22,6 +22,13 @@ const reportContent: Record<Language, {
   recommendations: string;
   generatedBy: string;
   date: string;
+  title: string;
+  questionsAnswered: string;
+  strengths: string;
+  improvements: string;
+  starAnalysis: string;
+  downloadReport: string;
+  retakeInterview: string;
 }> = {
   en: {
     interviewer: 'Interviewer Feedback',
