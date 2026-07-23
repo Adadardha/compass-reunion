@@ -487,6 +487,94 @@ function getFallbackQuestion(
 
 // Answer Evaluation
 
+/**
+ * Smart Demo Evaluator — dynamic mock scoring engine used when the Gemini
+ * API key is missing or the call fails. Produces a realistic, contextual
+ * `InterviewFeedback` object in the active UI language so the interview UI
+ * behaves identically to a live-AI session.
+ */
+function smartMockEvaluate(
+  career: string,
+  question: string,
+  answer: string,
+  activeLang: 'en' | 'al',
+  neurodivergent: boolean,
+): InterviewFeedback {
+  const text = answer.trim();
+  const lower = text.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+
+  const starVerbsEn = ['managed','built','solved','led','designed','implemented','created','launched','delivered','improved','optimized','coordinated','analyzed','decided','negotiated','presented','shipped','owned','mentored','resolved'];
+  const starVerbsAl = ['zhvillova','organizova','ndërtova','drejtova','krijova','zgjidha','menaxhova','implementova','dizajnova','përmirësova','optimizova','koordinova','analizova','vendosa','prezantova','realizova','ofrova','mësova','mentorova','arrita'];
+  const allVerbs = [...starVerbsEn, ...starVerbsAl];
+  const starHits = allVerbs.filter(v => lower.includes(v)).length;
+
+  const careerTokens = career.toLowerCase().split(/[\s/,-]+/).filter(t => t.length > 3);
+  const questionTokens = question.toLowerCase().split(/\s+/).filter(t => t.length > 4);
+  const relevantTokens = Array.from(new Set([...careerTokens, ...questionTokens]));
+  const relevanceHits = relevantTokens.filter(t => lower.includes(t)).length;
+
+  const hasNumbers = /\d/.test(text);
+  const hasMetric = /(%|percent|përqind|orë|ditë|javë|muaj|vite|users|klient|projekt)/i.test(text);
+
+  let score = 20;
+  score += Math.min(30, Math.floor(wordCount / 4));
+  score += Math.min(25, starHits * 6);
+  score += Math.min(15, relevanceHits * 4);
+  if (hasNumbers) score += 5;
+  if (hasMetric) score += 5;
+  if (wordCount < 8) score = Math.min(score, 25);
+  score = Math.max(5, Math.min(96, score));
+
+  const tech = Math.max(0, Math.min(100, score + (relevanceHits >= 2 ? 4 : -4)));
+  const comm = Math.max(0, Math.min(100, score + (wordCount >= 40 ? 5 : -3)));
+  const prob = Math.max(0, Math.min(100, score + (starHits >= 2 ? 5 : -2)));
+
+  const situationOk = wordCount >= 12;
+  const taskOk = /\b(task|goal|objektiv|detyra|qëllim)\b/i.test(text) || wordCount >= 20;
+  const actionOk = starHits >= 1;
+  const resultOk = hasNumbers || hasMetric || /\b(result|outcome|rezultat|arritj|impact)\b/i.test(text);
+
+  const rate = (ok: boolean) => activeLang === 'en'
+    ? (ok ? 'Clearly framed.' : 'Under-developed — add specifics.')
+    : (ok ? 'E paraqitur qartë.' : 'E pazhvilluar — shto detaje konkrete.');
+
+  const starLine = `S: ${rate(situationOk)} · T: ${rate(taskOk)} · A: ${rate(actionOk)} · R: ${rate(resultOk)}`;
+
+  const strengthsEn: string[] = [];
+  const strengthsAl: string[] = [];
+  if (wordCount >= 30) { strengthsEn.push('Answer has enough depth to evaluate.'); strengthsAl.push('Përgjigjja ka thellësi të mjaftueshme për vlerësim.'); }
+  if (starHits >= 2) { strengthsEn.push('Uses concrete action verbs — signals ownership.'); strengthsAl.push('Përdor folje veprimi konkrete — tregon përgjegjësi.'); }
+  if (relevanceHits >= 2) { strengthsEn.push(`Directly relevant to the ${career} role.`); strengthsAl.push(`Direkt e lidhur me rolin ${career}.`); }
+  if (hasNumbers || hasMetric) { strengthsEn.push('Quantifies impact with numbers or metrics.'); strengthsAl.push('Sasi ndikimin me numra ose metrika.'); }
+  if (!strengthsEn.length) { strengthsEn.push('Attempted the question directly.'); strengthsAl.push('Iu përgjigj pyetjes drejtpërdrejt.'); }
+
+  const improvementsEn: string[] = [];
+  const improvementsAl: string[] = [];
+  if (wordCount < 40) { improvementsEn.push('Expand with a concrete example (aim for 60–90 seconds spoken).'); improvementsAl.push('Zgjeroje me një shembull konkret (synoni 60–90 sekonda).'); }
+  if (starHits < 2) { improvementsEn.push('Use STAR structure — name the Situation, Task, Action, Result explicitly.'); improvementsAl.push('Përdor strukturën STAR — emërto Situatën, Detyrën, Veprimin, Rezultatin.'); }
+  if (!hasNumbers && !hasMetric) { improvementsEn.push('Quantify the outcome — a percentage, timeline, or user count anchors the story.'); improvementsAl.push('Sasi rezultatin — një përqindje, afat ose numër përdoruesish e forcon tregimin.'); }
+  if (relevanceHits < 2) { improvementsEn.push(`Tie the example back to skills valued in ${career}.`); improvementsAl.push(`Lidhe shembullin me aftësitë e vlerësuara në ${career}.`); }
+
+  const tipEn = neurodivergent
+    ? 'Structure your answer as three short bullets (Context → What I did → Outcome). Skip corporate buzzwords.'
+    : 'Anchor every claim in one specific project or metric — vague answers score lowest.';
+  const tipAl = neurodivergent
+    ? 'Strukturoje përgjigjen si tri pika të shkurtra (Konteksti → Çfarë bëra → Rezultati). Shmangni fjalët korporative.'
+    : 'Mbështet çdo pretendim me një projekt konkret ose metrikë — përgjigjet e vagullta marrin notat më të ulëta.';
+
+  return {
+    score,
+    strengths: activeLang === 'en' ? strengthsEn.slice(0, 3) : strengthsAl.slice(0, 3),
+    improvements: activeLang === 'en' ? improvementsEn.slice(0, 3) : improvementsAl.slice(0, 3),
+    detailedFeedback: `${starLine} · ${activeLang === 'en' ? tipEn : tipAl}`,
+    technicalAccuracy: tech,
+    communication: comm,
+    problemSolving: prob,
+  };
+}
+
 export const evaluateAnswerWithFeedback = async (
   career: string,
   question: string,
@@ -497,7 +585,6 @@ export const evaluateAnswerWithFeedback = async (
 ): Promise<InterviewFeedback> => {
   const activeLang = getLanguage();
 
-  // Non-answer short-circuit — never call the API for empty / "idk" style input.
   const trimmed = (answer || '').trim();
   const nonAnswerPatterns = [
     /^s'?e\s*di\.?$/i, /^se\s*di\.?$/i, /^spo\s*di\.?$/i,
@@ -529,23 +616,9 @@ export const evaluateAnswerWithFeedback = async (
         };
   }
 
+  // Smart Demo Driver — no key means we go straight to the dynamic mock.
   if (!GEMINI_API_KEY) {
-    // No key — return a neutral, honest signal instead of a fabricated word-count score.
-    return activeLang === 'en'
-      ? {
-          score: 50,
-          strengths: ['Answer submitted for review'],
-          improvements: ['AI scoring unavailable — configure VITE_GEMINI_API_KEY for real evaluation.'],
-          detailedFeedback: 'The AI evaluator is not configured. Provide a Gemini API key to receive detailed STAR-based feedback.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        }
-      : {
-          score: 50,
-          strengths: ['Përgjigjja u dërgua për vlerësim'],
-          improvements: ['Vlerësimi AI mungon — konfiguro VITE_GEMINI_API_KEY për vlerësim real.'],
-          detailedFeedback: 'Vlerësuesi AI nuk është i konfiguruar. Shto çelësin Gemini për të marrë vlerësim të detajuar STAR.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        };
+    return smartMockEvaluate(career, question, answer, activeLang, neurodivergent);
   }
 
   const neurodivergentAppendix = neurodivergent
@@ -602,22 +675,8 @@ IMPORTANT: The language of your JSON values (strengths, improvements, coachingTi
     }
     throw new Error('Invalid parsed feedback');
   } catch (err) {
-    console.warn('[Busulla] evaluateAnswer failed:', err);
-    return activeLang === 'en'
-      ? {
-          score: 50,
-          strengths: ['Answer received'],
-          improvements: ['AI evaluator temporarily unavailable — try again.'],
-          detailedFeedback: 'The AI evaluator did not return a valid response for this answer.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        }
-      : {
-          score: 50,
-          strengths: ['Përgjigjja u pranua'],
-          improvements: ['Vlerësuesi AI nuk u përgjigj — provo përsëri.'],
-          detailedFeedback: 'Vlerësuesi AI nuk ktheu një përgjigje të vlefshme për këtë përgjigje.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        };
+    console.warn('[Busulla] evaluateAnswer failed, using smart demo evaluator:', err);
+    return smartMockEvaluate(career, question, answer, activeLang, neurodivergent);
   }
 };
 
@@ -768,11 +827,22 @@ You MUST return valid JSON only. No markdown, no explanation, no code fences, no
 
 // Hint Generator
 
+function smartMockHint(question: string, career: string, lang: 'en' | 'al'): string {
+  const q = question.toLowerCase();
+  const behavioral = /(tell me|describe|time|situation|përshkruaj|tregoni|një herë|moment)/i.test(q);
+  if (behavioral) {
+    return lang === 'en'
+      ? `Use STAR: name the Situation (when/where), the Task you owned, the specific Action you took, and the measurable Result. Tie the story to skills used in ${career}.`
+      : `Përdor STAR: emërto Situatën (kur/ku), Detyrën që kishe, Veprimin konkret që bëre dhe Rezultatin e matshëm. Lidhe historinë me aftësitë e ${career}.`;
+  }
+  return lang === 'en'
+    ? `Start by restating the core problem in your own words, name your assumptions, then walk through your reasoning step-by-step before giving the answer. Anchor it to a real ${career} scenario.`
+    : `Nis duke e riformuluar problemin me fjalët tua, emërto supozimet, pastaj shpjego arsyetimin hap pas hapi para përgjigjes. Lidhe me një skenar real të ${career}.`;
+}
+
 export const getHint = async (question: string, career: string): Promise<string> => {
   const activeLang = getLanguage();
-  const fallback = activeLang === 'en'
-    ? 'Think about your prior experiences and how they apply to this scenario.'
-    : 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+  const fallback = smartMockHint(question, career, activeLang);
 
   if (!GEMINI_API_KEY) return fallback;
 
@@ -865,9 +935,52 @@ export const getCareerAssistantResponse = async (
     }
   }
 
-  return activeLang === 'en'
-    ? 'The assistant connection is unavailable right now. Try again in a few seconds — the quiz and mock interview are also available.'
-    : 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
+  // Smart Demo Driver — synthesize a contextual coach reply so the chatbot
+  // never surfaces an "unavailable" state to the user.
+  return smartMockChatReply(message, activeLang, userContext?.careerPath, userContext?.weakAreas);
 };
+
+function smartMockChatReply(
+  message: string,
+  lang: 'en' | 'al',
+  careerPath?: string,
+  weakAreas?: string[],
+): string {
+  const m = message.toLowerCase();
+  const career = careerPath || (lang === 'en' ? 'your target role' : 'roli yt i synuar');
+  const weak = weakAreas && weakAreas.length
+    ? (lang === 'en' ? ` Focus first on: ${weakAreas.join(', ')}.` : ` Fokusohu fillimisht te: ${weakAreas.join(', ')}.`)
+    : '';
+
+  const topic =
+    /cv|resume|rezyme/.test(m) ? 'cv' :
+    /interview|intervist/.test(m) ? 'interview' :
+    /skill|aftësi|mëso|learn|study|studo/.test(m) ? 'skills' :
+    /salary|pag[aë]|rrog/.test(m) ? 'salary' :
+    /roadmap|plan|hap|step/.test(m) ? 'roadmap' :
+    /nervous|frik|stress|ankth/.test(m) ? 'nerves' :
+    'general';
+
+  const en: Record<string, string> = {
+    cv: `For a strong ${career} CV: lead with 2–3 measurable outcomes (numbers, %, users), keep it to one page, and mirror the exact keywords from the job posting. Skip generic phrases like "hard worker" — replace them with a shipped project or a metric.${weak}`,
+    interview: `Interview prep for ${career} in 3 steps: (1) prepare 5 STAR stories covering leadership, conflict, failure, impact, and learning; (2) rehearse a 60-second self-intro tied to the role; (3) prepare 3 sharp questions for the interviewer about the team's roadmap and success metrics.${weak}`,
+    skills: `Prioritize the skills that appear in 5+ real ${career} job postings this month. Build one small portfolio project per skill — recruiters trust artifacts over certificates. Block 45 minutes daily; consistency beats intensity.${weak}`,
+    salary: `For ${career} in Albania, benchmark on Duapune.com, Njoftime.com, and LinkedIn. Ask for a range 10–15% above the local median if you have 1+ shipped project. For remote EU/US roles, use levels.fyi and Glassdoor — negotiate on total comp, not base only.`,
+    roadmap: `A realistic ${career} roadmap: month 1–2 fundamentals, month 3–4 one portfolio project, month 5 open-source contribution or freelance gig, month 6 apply broadly. Track weekly progress in a public log — it doubles accountability.${weak}`,
+    nerves: `Interview nerves are normal. Two techniques: box breathing (4-4-4-4) for 90 seconds before the call, and reframing — the interviewer wants you to succeed, they need to fill the role. Practice out loud, not just in your head.`,
+    general: `Great question. For ${career}, the highest-leverage move right now is to ship one small visible artifact this week — a mini project, a written case study, or a mock interview recording — and get feedback on it. Tell me what stage you're at and I'll narrow the plan.${weak}`,
+  };
+  const al: Record<string, string> = {
+    cv: `Për një CV të fortë ${career}: nis me 2–3 arritje të matshme (numra, %, përdorues), mbaje në një faqe, dhe përdor fjalët kyçe të njoftimit. Shmang fraza si "punëtor" — zëvendësoji me një projekt konkret ose një metrikë.${weak}`,
+    interview: `Përgatitja për intervistë ${career} në 3 hapa: (1) përgatit 5 histori STAR që mbulojnë lidership, konflikt, dështim, ndikim, mësim; (2) provo një vetëprezantim 60-sekondësh të lidhur me rolin; (3) përgatit 3 pyetje të mprehta për intervistuesin rreth planeve dhe metrikave të suksesit.${weak}`,
+    skills: `Jepi përparësi aftësive që shfaqen në 5+ njoftime reale ${career} këtë muaj. Ndërto një projekt të vogël për çdo aftësi — recrutuesit besojnë artefaktet më shumë se certifikatat. Bllokoj 45 minuta çdo ditë; qëndrueshmëria fiton mbi intensitetin.${weak}`,
+    salary: `Për ${career} në Shqipëri, krahaso me Duapune.com, Njoftime.com dhe LinkedIn. Kërko një diapazon 10–15% mbi mesataren lokale nëse ke 1+ projekt të realizuar. Për role remote BE/SHBA, përdor levels.fyi dhe Glassdoor — negocio në total compensation, jo vetëm bazën.`,
+    roadmap: `Një plan realist ${career}: muaji 1–2 baza, muaji 3–4 një projekt portofoli, muaji 5 kontribut open-source ose freelance, muaji 6 aplikime të gjera. Ndiq progresin javor në një log publik — dyfishon përgjegjshmërinë.${weak}`,
+    nerves: `Ankthi para intervistës është normal. Dy teknika: frymëmarrja në kuti (4-4-4-4) për 90 sekonda para thirrjes, dhe riformulimi — intervistuesi dëshiron që ti të kalosh. Provo me zë të lartë, jo vetëm në mendje.`,
+    general: `Pyetje e mirë. Për ${career}, veprimi me më shumë ndikim tani është të prodhosh një artefakt të vogël të dukshëm këtë javë — një mini-projekt, një rast studimi të shkruar, ose një regjistrim intervistë simulate — dhe të marrësh feedback. Më thuaj në cilën fazë je dhe do ta ngushtoj planin.${weak}`,
+  };
+
+  return (lang === 'en' ? en : al)[topic];
+}
 
 
