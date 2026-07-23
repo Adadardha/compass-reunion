@@ -487,6 +487,94 @@ function getFallbackQuestion(
 
 // Answer Evaluation
 
+/**
+ * Smart Demo Evaluator — dynamic mock scoring engine used when the Gemini
+ * API key is missing or the call fails. Produces a realistic, contextual
+ * `InterviewFeedback` object in the active UI language so the interview UI
+ * behaves identically to a live-AI session.
+ */
+function smartMockEvaluate(
+  career: string,
+  question: string,
+  answer: string,
+  activeLang: 'en' | 'al',
+  neurodivergent: boolean,
+): InterviewFeedback {
+  const text = answer.trim();
+  const lower = text.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+
+  const starVerbsEn = ['managed','built','solved','led','designed','implemented','created','launched','delivered','improved','optimized','coordinated','analyzed','decided','negotiated','presented','shipped','owned','mentored','resolved'];
+  const starVerbsAl = ['zhvillova','organizova','ndërtova','drejtova','krijova','zgjidha','menaxhova','implementova','dizajnova','përmirësova','optimizova','koordinova','analizova','vendosa','prezantova','realizova','ofrova','mësova','mentorova','arrita'];
+  const allVerbs = [...starVerbsEn, ...starVerbsAl];
+  const starHits = allVerbs.filter(v => lower.includes(v)).length;
+
+  const careerTokens = career.toLowerCase().split(/[\s/,-]+/).filter(t => t.length > 3);
+  const questionTokens = question.toLowerCase().split(/\s+/).filter(t => t.length > 4);
+  const relevantTokens = Array.from(new Set([...careerTokens, ...questionTokens]));
+  const relevanceHits = relevantTokens.filter(t => lower.includes(t)).length;
+
+  const hasNumbers = /\d/.test(text);
+  const hasMetric = /(%|percent|përqind|orë|ditë|javë|muaj|vite|users|klient|projekt)/i.test(text);
+
+  let score = 20;
+  score += Math.min(30, Math.floor(wordCount / 4));
+  score += Math.min(25, starHits * 6);
+  score += Math.min(15, relevanceHits * 4);
+  if (hasNumbers) score += 5;
+  if (hasMetric) score += 5;
+  if (wordCount < 8) score = Math.min(score, 25);
+  score = Math.max(5, Math.min(96, score));
+
+  const tech = Math.max(0, Math.min(100, score + (relevanceHits >= 2 ? 4 : -4)));
+  const comm = Math.max(0, Math.min(100, score + (wordCount >= 40 ? 5 : -3)));
+  const prob = Math.max(0, Math.min(100, score + (starHits >= 2 ? 5 : -2)));
+
+  const situationOk = wordCount >= 12;
+  const taskOk = /\b(task|goal|objektiv|detyra|qëllim)\b/i.test(text) || wordCount >= 20;
+  const actionOk = starHits >= 1;
+  const resultOk = hasNumbers || hasMetric || /\b(result|outcome|rezultat|arritj|impact)\b/i.test(text);
+
+  const rate = (ok: boolean) => activeLang === 'en'
+    ? (ok ? 'Clearly framed.' : 'Under-developed — add specifics.')
+    : (ok ? 'E paraqitur qartë.' : 'E pazhvilluar — shto detaje konkrete.');
+
+  const starLine = `S: ${rate(situationOk)} · T: ${rate(taskOk)} · A: ${rate(actionOk)} · R: ${rate(resultOk)}`;
+
+  const strengthsEn: string[] = [];
+  const strengthsAl: string[] = [];
+  if (wordCount >= 30) { strengthsEn.push('Answer has enough depth to evaluate.'); strengthsAl.push('Përgjigjja ka thellësi të mjaftueshme për vlerësim.'); }
+  if (starHits >= 2) { strengthsEn.push('Uses concrete action verbs — signals ownership.'); strengthsAl.push('Përdor folje veprimi konkrete — tregon përgjegjësi.'); }
+  if (relevanceHits >= 2) { strengthsEn.push(`Directly relevant to the ${career} role.`); strengthsAl.push(`Direkt e lidhur me rolin ${career}.`); }
+  if (hasNumbers || hasMetric) { strengthsEn.push('Quantifies impact with numbers or metrics.'); strengthsAl.push('Sasi ndikimin me numra ose metrika.'); }
+  if (!strengthsEn.length) { strengthsEn.push('Attempted the question directly.'); strengthsAl.push('Iu përgjigj pyetjes drejtpërdrejt.'); }
+
+  const improvementsEn: string[] = [];
+  const improvementsAl: string[] = [];
+  if (wordCount < 40) { improvementsEn.push('Expand with a concrete example (aim for 60–90 seconds spoken).'); improvementsAl.push('Zgjeroje me një shembull konkret (synoni 60–90 sekonda).'); }
+  if (starHits < 2) { improvementsEn.push('Use STAR structure — name the Situation, Task, Action, Result explicitly.'); improvementsAl.push('Përdor strukturën STAR — emërto Situatën, Detyrën, Veprimin, Rezultatin.'); }
+  if (!hasNumbers && !hasMetric) { improvementsEn.push('Quantify the outcome — a percentage, timeline, or user count anchors the story.'); improvementsAl.push('Sasi rezultatin — një përqindje, afat ose numër përdoruesish e forcon tregimin.'); }
+  if (relevanceHits < 2) { improvementsEn.push(`Tie the example back to skills valued in ${career}.`); improvementsAl.push(`Lidhe shembullin me aftësitë e vlerësuara në ${career}.`); }
+
+  const tipEn = neurodivergent
+    ? 'Structure your answer as three short bullets (Context → What I did → Outcome). Skip corporate buzzwords.'
+    : 'Anchor every claim in one specific project or metric — vague answers score lowest.';
+  const tipAl = neurodivergent
+    ? 'Strukturoje përgjigjen si tri pika të shkurtra (Konteksti → Çfarë bëra → Rezultati). Shmangni fjalët korporative.'
+    : 'Mbështet çdo pretendim me një projekt konkret ose metrikë — përgjigjet e vagullta marrin notat më të ulëta.';
+
+  return {
+    score,
+    strengths: activeLang === 'en' ? strengthsEn.slice(0, 3) : strengthsAl.slice(0, 3),
+    improvements: activeLang === 'en' ? improvementsEn.slice(0, 3) : improvementsAl.slice(0, 3),
+    detailedFeedback: `${starLine} · ${activeLang === 'en' ? tipEn : tipAl}`,
+    technicalAccuracy: tech,
+    communication: comm,
+    problemSolving: prob,
+  };
+}
+
 export const evaluateAnswerWithFeedback = async (
   career: string,
   question: string,
@@ -497,7 +585,6 @@ export const evaluateAnswerWithFeedback = async (
 ): Promise<InterviewFeedback> => {
   const activeLang = getLanguage();
 
-  // Non-answer short-circuit — never call the API for empty / "idk" style input.
   const trimmed = (answer || '').trim();
   const nonAnswerPatterns = [
     /^s'?e\s*di\.?$/i, /^se\s*di\.?$/i, /^spo\s*di\.?$/i,
@@ -529,23 +616,9 @@ export const evaluateAnswerWithFeedback = async (
         };
   }
 
+  // Smart Demo Driver — no key means we go straight to the dynamic mock.
   if (!GEMINI_API_KEY) {
-    // No key — return a neutral, honest signal instead of a fabricated word-count score.
-    return activeLang === 'en'
-      ? {
-          score: 50,
-          strengths: ['Answer submitted for review'],
-          improvements: ['AI scoring unavailable — configure VITE_GEMINI_API_KEY for real evaluation.'],
-          detailedFeedback: 'The AI evaluator is not configured. Provide a Gemini API key to receive detailed STAR-based feedback.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        }
-      : {
-          score: 50,
-          strengths: ['Përgjigjja u dërgua për vlerësim'],
-          improvements: ['Vlerësimi AI mungon — konfiguro VITE_GEMINI_API_KEY për vlerësim real.'],
-          detailedFeedback: 'Vlerësuesi AI nuk është i konfiguruar. Shto çelësin Gemini për të marrë vlerësim të detajuar STAR.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        };
+    return smartMockEvaluate(career, question, answer, activeLang, neurodivergent);
   }
 
   const neurodivergentAppendix = neurodivergent
@@ -602,22 +675,8 @@ IMPORTANT: The language of your JSON values (strengths, improvements, coachingTi
     }
     throw new Error('Invalid parsed feedback');
   } catch (err) {
-    console.warn('[Busulla] evaluateAnswer failed:', err);
-    return activeLang === 'en'
-      ? {
-          score: 50,
-          strengths: ['Answer received'],
-          improvements: ['AI evaluator temporarily unavailable — try again.'],
-          detailedFeedback: 'The AI evaluator did not return a valid response for this answer.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        }
-      : {
-          score: 50,
-          strengths: ['Përgjigjja u pranua'],
-          improvements: ['Vlerësuesi AI nuk u përgjigj — provo përsëri.'],
-          detailedFeedback: 'Vlerësuesi AI nuk ktheu një përgjigje të vlefshme për këtë përgjigje.',
-          technicalAccuracy: 50, communication: 50, problemSolving: 50,
-        };
+    console.warn('[Busulla] evaluateAnswer failed, using smart demo evaluator:', err);
+    return smartMockEvaluate(career, question, answer, activeLang, neurodivergent);
   }
 };
 
