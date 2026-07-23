@@ -827,11 +827,22 @@ You MUST return valid JSON only. No markdown, no explanation, no code fences, no
 
 // Hint Generator
 
+function smartMockHint(question: string, career: string, lang: 'en' | 'al'): string {
+  const q = question.toLowerCase();
+  const behavioral = /(tell me|describe|time|situation|përshkruaj|tregoni|një herë|moment)/i.test(q);
+  if (behavioral) {
+    return lang === 'en'
+      ? `Use STAR: name the Situation (when/where), the Task you owned, the specific Action you took, and the measurable Result. Tie the story to skills used in ${career}.`
+      : `Përdor STAR: emërto Situatën (kur/ku), Detyrën që kishe, Veprimin konkret që bëre dhe Rezultatin e matshëm. Lidhe historinë me aftësitë e ${career}.`;
+  }
+  return lang === 'en'
+    ? `Start by restating the core problem in your own words, name your assumptions, then walk through your reasoning step-by-step before giving the answer. Anchor it to a real ${career} scenario.`
+    : `Nis duke e riformuluar problemin me fjalët tua, emërto supozimet, pastaj shpjego arsyetimin hap pas hapi para përgjigjes. Lidhe me një skenar real të ${career}.`;
+}
+
 export const getHint = async (question: string, career: string): Promise<string> => {
   const activeLang = getLanguage();
-  const fallback = activeLang === 'en'
-    ? 'Think about your prior experiences and how they apply to this scenario.'
-    : 'Mendo për përvojat tua të mëparshme dhe si mund të zbatohen këtu.';
+  const fallback = smartMockHint(question, career, activeLang);
 
   if (!GEMINI_API_KEY) return fallback;
 
