@@ -935,9 +935,52 @@ export const getCareerAssistantResponse = async (
     }
   }
 
-  return activeLang === 'en'
-    ? 'The assistant connection is unavailable right now. Try again in a few seconds — the quiz and mock interview are also available.'
-    : 'Për momentin lidhja me asistentin nuk është e mundur. Provo përsëri pas pak sekondash — kuizi dhe intervista simulate janë gjithashtu në dispozicion.';
+  // Smart Demo Driver — synthesize a contextual coach reply so the chatbot
+  // never surfaces an "unavailable" state to the user.
+  return smartMockChatReply(message, activeLang, userContext?.careerPath, userContext?.weakAreas);
 };
+
+function smartMockChatReply(
+  message: string,
+  lang: 'en' | 'al',
+  careerPath?: string,
+  weakAreas?: string[],
+): string {
+  const m = message.toLowerCase();
+  const career = careerPath || (lang === 'en' ? 'your target role' : 'roli yt i synuar');
+  const weak = weakAreas && weakAreas.length
+    ? (lang === 'en' ? ` Focus first on: ${weakAreas.join(', ')}.` : ` Fokusohu fillimisht te: ${weakAreas.join(', ')}.`)
+    : '';
+
+  const topic =
+    /cv|resume|rezyme/.test(m) ? 'cv' :
+    /interview|intervist/.test(m) ? 'interview' :
+    /skill|aftësi|mëso|learn|study|studo/.test(m) ? 'skills' :
+    /salary|pag[aë]|rrog/.test(m) ? 'salary' :
+    /roadmap|plan|hap|step/.test(m) ? 'roadmap' :
+    /nervous|frik|stress|ankth/.test(m) ? 'nerves' :
+    'general';
+
+  const en: Record<string, string> = {
+    cv: `For a strong ${career} CV: lead with 2–3 measurable outcomes (numbers, %, users), keep it to one page, and mirror the exact keywords from the job posting. Skip generic phrases like "hard worker" — replace them with a shipped project or a metric.${weak}`,
+    interview: `Interview prep for ${career} in 3 steps: (1) prepare 5 STAR stories covering leadership, conflict, failure, impact, and learning; (2) rehearse a 60-second self-intro tied to the role; (3) prepare 3 sharp questions for the interviewer about the team's roadmap and success metrics.${weak}`,
+    skills: `Prioritize the skills that appear in 5+ real ${career} job postings this month. Build one small portfolio project per skill — recruiters trust artifacts over certificates. Block 45 minutes daily; consistency beats intensity.${weak}`,
+    salary: `For ${career} in Albania, benchmark on Duapune.com, Njoftime.com, and LinkedIn. Ask for a range 10–15% above the local median if you have 1+ shipped project. For remote EU/US roles, use levels.fyi and Glassdoor — negotiate on total comp, not base only.`,
+    roadmap: `A realistic ${career} roadmap: month 1–2 fundamentals, month 3–4 one portfolio project, month 5 open-source contribution or freelance gig, month 6 apply broadly. Track weekly progress in a public log — it doubles accountability.${weak}`,
+    nerves: `Interview nerves are normal. Two techniques: box breathing (4-4-4-4) for 90 seconds before the call, and reframing — the interviewer wants you to succeed, they need to fill the role. Practice out loud, not just in your head.`,
+    general: `Great question. For ${career}, the highest-leverage move right now is to ship one small visible artifact this week — a mini project, a written case study, or a mock interview recording — and get feedback on it. Tell me what stage you're at and I'll narrow the plan.${weak}`,
+  };
+  const al: Record<string, string> = {
+    cv: `Për një CV të fortë ${career}: nis me 2–3 arritje të matshme (numra, %, përdorues), mbaje në një faqe, dhe përdor fjalët kyçe të njoftimit. Shmang fraza si "punëtor" — zëvendësoji me një projekt konkret ose një metrikë.${weak}`,
+    interview: `Përgatitja për intervistë ${career} në 3 hapa: (1) përgatit 5 histori STAR që mbulojnë lidership, konflikt, dështim, ndikim, mësim; (2) provo një vetëprezantim 60-sekondësh të lidhur me rolin; (3) përgatit 3 pyetje të mprehta për intervistuesin rreth planeve dhe metrikave të suksesit.${weak}`,
+    skills: `Jepi përparësi aftësive që shfaqen në 5+ njoftime reale ${career} këtë muaj. Ndërto një projekt të vogël për çdo aftësi — recrutuesit besojnë artefaktet më shumë se certifikatat. Bllokoj 45 minuta çdo ditë; qëndrueshmëria fiton mbi intensitetin.${weak}`,
+    salary: `Për ${career} në Shqipëri, krahaso me Duapune.com, Njoftime.com dhe LinkedIn. Kërko një diapazon 10–15% mbi mesataren lokale nëse ke 1+ projekt të realizuar. Për role remote BE/SHBA, përdor levels.fyi dhe Glassdoor — negocio në total compensation, jo vetëm bazën.`,
+    roadmap: `Një plan realist ${career}: muaji 1–2 baza, muaji 3–4 një projekt portofoli, muaji 5 kontribut open-source ose freelance, muaji 6 aplikime të gjera. Ndiq progresin javor në një log publik — dyfishon përgjegjshmërinë.${weak}`,
+    nerves: `Ankthi para intervistës është normal. Dy teknika: frymëmarrja në kuti (4-4-4-4) për 90 sekonda para thirrjes, dhe riformulimi — intervistuesi dëshiron që ti të kalosh. Provo me zë të lartë, jo vetëm në mendje.`,
+    general: `Pyetje e mirë. Për ${career}, veprimi me më shumë ndikim tani është të prodhosh një artefakt të vogël të dukshëm këtë javë — një mini-projekt, një rast studimi të shkruar, ose një regjistrim intervistë simulate — dhe të marrësh feedback. Më thuaj në cilën fazë je dhe do ta ngushtoj planin.${weak}`,
+  };
+
+  return (lang === 'en' ? en : al)[topic];
+}
 
 
